@@ -11,7 +11,7 @@ data class PositionSpec(val projectName: String, val limit: Int, val typeName: S
     override fun generateIndexIteratorEntry() =  "$typeName.of(idx - 1)"
 
     override fun generate(packageName: String): String = """
-        package $packageName.data.$projectName
+        package $packageName.entities.$projectName
 
         enum class $typeName {
             ${(0 until limit).joinToString { literalPrefix + it }};
