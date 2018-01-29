@@ -11,7 +11,7 @@ data class ContainerSpec(val projectName: String, val typeName: String, val coor
     override fun generateIndexIteratorEntry() = ""
 
     override fun generate(packageName: String) = """
-        package $packageName.data.$projectName
+        package $packageName.entities.$projectName
 
         ${generateImports(packageName)}
 
@@ -39,11 +39,42 @@ data class ContainerSpec(val projectName: String, val typeName: String, val coor
                     return ${coordinateType.generateIndexIteratorEntry()}
                 }
             }
+            ${generateLoopIterator()}
         }
         """.trimIndent()
 
+    private fun generateLoopIterator() = if (coordinateType is PositionSpec) """
+            fun loopIterator() = LoopIterator()
+
+            class LoopIterator : Iterator<${coordinateType.typeName()}> {
+                var idx = 0
+
+                override fun hasNext(): Boolean = idx < ${coordinateType.generateSizeFieldsSum()}
+
+                fun current() = ${coordinateType.typeName()}.values()[idx]
+
+                override fun next(): ${coordinateType.typeName()} {
+                    if (idx == size - 1) {
+                        idx = 0
+                    } else {
+                        idx++
+                    }
+                    return ${coordinateType.generateIndexIteratorEntry()}
+                }
+
+                fun prev(): ${coordinateType.typeName()} {
+                    if (idx == 0) {
+                        idx = size - 1
+                    } else {
+                        idx--
+                    }
+                    return ${coordinateType.generateIndexIteratorEntry()}
+                }
+            }
+        """ else ""
+
     private fun generateImports(basePackageName: String) =
-            (childrenHierarchy(this).map { setOf(it.coordinateType.projectName(), it.refType.projectName(), it.containedType.projectName()) }.flatten().toSet() - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.data.$it.*" }
+            (childrenHierarchy(this).map { setOf(it.coordinateType.projectName(), it.refType.projectName(), it.containedType.projectName()) }.flatten().toSet() - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
     private fun generateCopyFunctions(): String {
         var result = ""

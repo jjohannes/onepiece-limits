@@ -23,7 +23,7 @@ open class LimitsGenerationTask : DefaultTask() {
         specs.forEach { spec ->
             val content = spec.generate(packageName)
 
-            val targetFolder = File(out, "data/${spec.projectName()}/src/main/kotlin/${packageName.replace('.', '/')}/data/${spec.projectName()}")
+            val targetFolder = File(out, "entities/${spec.projectName()}/src/main/kotlin/${packageName.replace('.', '/')}/entities/${spec.projectName()}")
             targetFolder.mkdirs()
 
             File(targetFolder, "${spec.typeName()}.kt").printWriter().use {
