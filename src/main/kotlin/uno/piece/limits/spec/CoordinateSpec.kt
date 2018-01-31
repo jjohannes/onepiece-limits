@@ -8,7 +8,7 @@ data class CoordinateSpec(val projectName: String, val typeName: String, val xTy
     override fun generateEmpty() = "$typeName.of(${xType.typeName}.${xType.literalPrefix}0, ${yType.typeName}.${yType.literalPrefix}0)"
     override fun generateSizeFields() = "val width = ${xType.limit}; val height = ${yType.limit}"
     override fun generateSizeFieldsSum() = "width * height"
-    override fun generateIndexIteratorEntry() = "$typeName.of(${xType.typeName}.of((idx - 1 - ((idx - 1) / width) * width)), ${yType.typeName}.of((idx - 1) / width))"
+    override fun generateIndexIteratorEntry() = "$typeName.of(${xType.typeName}.of(idx - (idx / width) * width), ${yType.typeName}.of(idx / width))"
 
     override fun generate(packageName: String): String = """
         package $packageName.entities.$projectName
