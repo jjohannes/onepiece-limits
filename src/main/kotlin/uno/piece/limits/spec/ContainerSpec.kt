@@ -23,22 +23,43 @@ data class ContainerSpec(val projectName: String, val typeName: String, val coor
                 ${coordinateType.generateSizeFields()}
             }
 
-            override fun iterator(): Iterator<${coordinateType.typeName()}> = IndexIterator()
+            override fun iterator(): Iterator<${coordinateType.typeName()}> = IndexIterator(map)
 
             operator fun get(position: ${coordinateType.typeName()}) = if (map.containsKey(position)) map[position]!! else ${refType.generateEmpty()}
 
             fun with${refType.typeName()}(entry: Pair<${coordinateType.typeName()}, ${refType.typeName()}>): $typeName = copy(map = map + entry${if (containedType != refType) ", ${containedType.typeName().decapitalize()} = ${containedType.typeName().decapitalize()}" else ""})
-            ${generateCopyFunctions()}
-            private class IndexIterator : Iterator<${coordinateType.typeName()}> {
-                var idx = 0
 
-                override fun hasNext(): Boolean = idx < ${coordinateType.generateSizeFieldsSum()}
+            fun without${refType.typeName()}(entry: ${coordinateType.typeName()}): $typeName = copy(map = map - entry${if (containedType != refType) ", ${containedType.typeName().decapitalize()} = ${containedType.typeName().decapitalize()}" else ""})
+            ${generateCopyFunctions()}
+            private class IndexIterator(val map: Map<${coordinateType.typeName()}, ${refType.typeName()}>) : Iterator<${coordinateType.typeName()}> {
+                var idx = 0
+                var next: ${coordinateType.typeName()}? = null
+
+                override fun hasNext(): Boolean {
+                    if (next != null) {
+                        return true
+                    }
+                    if (idx == ${coordinateType.generateSizeFieldsSum()}) {
+                        return false
+                    }
+                    val coordinate = ${coordinateType.generateIndexIteratorEntry()}
+                    if (map.containsKey(coordinate)) {
+                        next = coordinate
+                    }
+                    idx++
+                    return hasNext()
+                }
 
                 override fun next(): ${coordinateType.typeName()} {
-                    idx++
-                    return ${coordinateType.generateIndexIteratorEntry()}
+                    if (next == null) {
+                        hasNext()
+                    }
+                    val v = next!!
+                    next = null
+                    return v
                 }
             }
+
             ${generateLoopIterator()}
         }
         """.trimIndent()
@@ -79,17 +100,39 @@ data class ContainerSpec(val projectName: String, val typeName: String, val coor
     private fun generateCopyFunctions(): String {
         var result = ""
         val hierarchy = childrenHierarchy(this)
+        val is1to1Container = hierarchy[0].containedType != hierarchy[0].refType
         (1 until hierarchy.size).forEach { index ->
-            if (hierarchy[0].containedType == hierarchy[0].refType) {
-                result += """
-            fun with${hierarchy[index].refType.typeName()}(${(0 until index).filter { hierarchy[it].coordinateType != hierarchy[index].coordinateType }.joinToString { "${hierarchy[it].coordinateType.typeName().decapitalize()}: ${hierarchy[it].coordinateType.typeName()}"}}, entry: Pair<${hierarchy[index].coordinateType.typeName()}, ${hierarchy[index].refType.typeName()}>) =
-                    with${refType.typeName()}(${hierarchy[0].coordinateType.typeName().decapitalize()} to this[${hierarchy[0].coordinateType.typeName().decapitalize()}].with${hierarchy[index].refType.typeName()}(${(1 until index).filter { hierarchy[it].coordinateType != hierarchy[index].coordinateType }.joinToString(separator = "") { "${hierarchy[it].coordinateType.typeName().decapitalize()}, " }}entry))
+            result += """
+            fun with${hierarchy[index].refType.typeName()}(${(0 until index).filter { hierarchy[it].coordinateType != hierarchy[index].coordinateType }.map {
+                hierarchy[it].coordinateType.typeName()
+            }.distinct().joinToString(separator = "") {
+                        "${it.decapitalize()}: $it, "
+                    }}entry: Pair<${hierarchy[index].coordinateType.typeName()}, ${hierarchy[index].refType.typeName()}>) =
+                ${if (is1to1Container)
+                    "copy(map = map, ${hierarchy[0].containedType.typeName().decapitalize()} = ${hierarchy[0].containedType.typeName().decapitalize()}"
+                else
+                    "with${refType.typeName()}(${hierarchy[0].coordinateType.typeName().decapitalize()} to this[${hierarchy[0].coordinateType.typeName().decapitalize()}]"
+                }.with${hierarchy[index].refType.typeName()}(${(1 until index).filter { hierarchy[it].coordinateType != hierarchy[index].coordinateType }.map {
+                hierarchy[it].coordinateType.typeName()
+            }.distinct().joinToString(separator = "") {
+                        "${it.decapitalize()}, "
+                    }}entry))
+
+            fun without${hierarchy[index].refType.typeName()}(${(0 until index).filter { hierarchy[it].coordinateType != hierarchy[index].coordinateType }.map {
+                hierarchy[it].coordinateType.typeName()
+            }.distinct().joinToString(separator = "") {
+                        "${it.decapitalize()}: $it, "
+                    }}entry: ${hierarchy[index].coordinateType.typeName()}) =
+                ${if (is1to1Container)
+                    "copy(map = map, ${hierarchy[0].containedType.typeName().decapitalize()} = ${hierarchy[0].containedType.typeName().decapitalize()}"
+                else
+                    "with${refType.typeName()}(${hierarchy[0].coordinateType.typeName().decapitalize()} to this[${hierarchy[0].coordinateType.typeName().decapitalize()}]"
+                }.without${hierarchy[index].refType.typeName()}(${(1 until index).filter { hierarchy[it].coordinateType != hierarchy[index].coordinateType }.map {
+                hierarchy[it].coordinateType.typeName()
+            }.distinct().joinToString(separator = "") {
+                        "${it.decapitalize()}, "
+                    }}entry))
             """
-            } else {
-                result += """
-            fun with${hierarchy[index].refType.typeName()}(entry: Pair<${hierarchy[index].coordinateType.typeName()}, ${hierarchy[index].refType.typeName()}>) = copy(map = map, ${hierarchy[0].containedType.typeName().decapitalize()} = ${hierarchy[0].containedType.typeName().decapitalize()}.with${hierarchy[index].refType.typeName()}(entry))
-            """
-            }
         }
         return result
     }

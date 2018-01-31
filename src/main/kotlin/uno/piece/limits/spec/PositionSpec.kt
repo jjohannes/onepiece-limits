@@ -8,7 +8,7 @@ data class PositionSpec(val projectName: String, val limit: Int, val typeName: S
     override fun generateEmpty() = "$typeName.${literalPrefix}0"
     override fun generateSizeFields() = "val size = $limit"
     override fun generateSizeFieldsSum() =  "size"
-    override fun generateIndexIteratorEntry() =  "$typeName.of(idx - 1)"
+    override fun generateIndexIteratorEntry() =  "$typeName.of(idx)"
 
     override fun generate(packageName: String): String = """
         package $packageName.entities.$projectName
