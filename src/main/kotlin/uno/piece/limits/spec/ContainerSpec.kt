@@ -27,7 +27,9 @@ data class ContainerSpec(val projectName: String, val typeName: String, val coor
 
             operator fun get(position: ${coordinateType.typeName()}) = if (map.containsKey(position)) map[position]!! else ${refType.generateEmpty()}
 
-            fun with${refType.typeName()}(entry: Pair<${coordinateType.typeName()}, ${refType.typeName()}>): $typeName = copy(map = map + entry${if (containedType != refType) ", ${containedType.typeName().decapitalize()} = ${containedType.typeName().decapitalize()}" else ""})
+            fun isEmpty() = map.isEmpty()
+
+            fun with${refType.typeName()}(entry: Pair<${coordinateType.typeName()}, ${refType.typeName()}>) = ${if (refType is ContainerSpec) "if (entry.second.isEmpty()) copy(map = map - entry.first) else " else ""}copy(map = map + entry${if (containedType != refType) ", ${containedType.typeName().decapitalize()} = ${containedType.typeName().decapitalize()}" else ""})
 
             fun without${refType.typeName()}(entry: ${coordinateType.typeName()}): $typeName = copy(map = map - entry${if (containedType != refType) ", ${containedType.typeName().decapitalize()} = ${containedType.typeName().decapitalize()}" else ""})
             ${generateCopyFunctions()}
