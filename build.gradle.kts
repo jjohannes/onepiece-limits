@@ -3,7 +3,7 @@ plugins {
     `maven-publish`
 }
 
-group = "uno.piece.limits"
+group = "software.onepiece.limits"
 version = "0.0.1"
 
 repositories {

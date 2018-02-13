@@ -1,8 +1,8 @@
-package uno.piece.limits.spec
+package software.onepiece.limits.spec
 
 import java.io.Serializable
 
-data class PositionSpec(val projectName: String, val limit: Int, val typeName: String, val literalPrefix: String) : Serializable, TypeSpec {
+data class CoordinateSpec(val projectName: String, val limit: Int, val typeName: String, val literalPrefix: String) : Serializable, TypeSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "$typeName.${literalPrefix}0"

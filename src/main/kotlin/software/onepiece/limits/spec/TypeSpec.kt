@@ -1,4 +1,4 @@
-package uno.piece.limits.spec
+package software.onepiece.limits.spec
 
 interface TypeSpec {
     fun projectName(): String

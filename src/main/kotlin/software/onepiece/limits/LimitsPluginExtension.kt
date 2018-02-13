@@ -1,6 +1,6 @@
-package uno.piece.limits
+package software.onepiece.limits
 
-import uno.piece.limits.spec.TypeSpec
+import software.onepiece.limits.spec.TypeSpec
 
 open class LimitsPluginExtension {
     lateinit var packageName: String
