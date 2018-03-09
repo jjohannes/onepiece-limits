@@ -26,22 +26,20 @@ data class CoordinateSpec(val projectName: String, val limit: Int, val typeName:
                     }
                     return values()[unlimitedInt]
                 }
+
+                fun saveValue(ordinal: Int) = values()[Math.max(0, Math.min(${limit - 1}, ordinal))]
             }
 
-            operator fun plus(other: $typeName) = saveIncrease(ordinal + other.ordinal)
+            operator fun plus(other: $typeName) = saveValue(ordinal + other.ordinal)
 
-            operator fun minus(other: $typeName) = saveReduce(ordinal - other.ordinal)
+            operator fun minus(other: $typeName) = saveValue(ordinal - other.ordinal)
 
-            operator fun times(other: $typeName) = saveIncrease(ordinal * other.ordinal)
+            operator fun times(other: $typeName) = saveValue(ordinal * other.ordinal)
 
-            operator fun div(other: $typeName) = saveReduce(ordinal / other.ordinal)
-
-            internal fun saveIncrease(value: Int) = values()[Math.min(${limit - 1}, value)]
-
-            internal fun saveReduce(value: Int) =  values()[Math.max(0, value)]
+            operator fun div(other: $typeName) = saveValue(ordinal / other.ordinal)
         }
 
-        fun Int.to$typeName() = $typeName.${literalPrefix}0.saveIncrease(this)
+        fun Int.to$typeName() = $typeName.saveValue(this)
         """.trimIndent()
 
 
