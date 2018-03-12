@@ -24,6 +24,8 @@ data class CoordinatesSpec(val projectName: String, val typeName: String, val xT
                     }
                     return pool[key]!!
                 }
+
+                val zero = of(${xType.typeName}.${xType.literalPrefix}0, ${yType.typeName}.${yType.literalPrefix}0)
             }
 
             override fun compareTo(other: $typeName): Int {
