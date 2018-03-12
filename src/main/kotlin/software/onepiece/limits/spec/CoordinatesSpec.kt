@@ -20,7 +20,7 @@ data class CoordinatesSpec(val projectName: String, val typeName: String, val xT
                 fun of(x: ${xType.typeName}, y: ${yType.typeName}) : $typeName {
                     val key = x.ordinal + limit * y.ordinal
                     if (!pool.containsKey(key)) {
-                        pool.put(key, ${typeName}(x, y))
+                        pool[key] = $typeName(x, y)
                     }
                     return pool[key]!!
                 }
