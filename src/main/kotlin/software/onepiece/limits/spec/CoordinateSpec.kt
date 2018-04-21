@@ -6,7 +6,7 @@ data class CoordinateSpec(val projectName: String, val limit: Int, val typeName:
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "$typeName.${literalPrefix}0"
-    override fun generateSizeFields() = "val size = $limit"
+    override fun generateSizeFields() = "const val size = $limit"
     override fun generateSizeFieldsSum() =  "size"
     override fun generateIndexIteratorEntry() =  "$typeName.of(idx)"
 
@@ -26,6 +26,8 @@ data class CoordinateSpec(val projectName: String, val limit: Int, val typeName:
                     }
                     return values()[unlimitedInt]
                 }
+
+                val zero = ${literalPrefix}0
 
                 fun saveValue(ordinal: Int) = values()[Math.max(0, Math.min(${limit - 1}, ordinal))]
             }
