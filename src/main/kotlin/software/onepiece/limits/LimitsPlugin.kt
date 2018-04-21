@@ -21,8 +21,8 @@ class LimitsPlugin: Plugin<Project> {
             val allSpecs = extension.specs.map { spec -> collectSpecs(spec) }.flatten().distinct().groupBy { it.projectName() }
 
             allSpecs.forEach { projectName, specs ->
-                val sub = project.findProject(":${projectName}") ?:
-                        throw RuntimeException("Project '${projectName}' needs to be included in build")
+                val sub = project.findProject(":$projectName") ?:
+                        throw RuntimeException("Project '$projectName' needs to be included in build")
                 sub.projectDir.mkdirs()
                 val generatedSrcFolder = File(sub.buildDir, "generated-src")
 
@@ -51,8 +51,15 @@ class LimitsPlugin: Plugin<Project> {
                             val projectDependency = sub.dependencies.project(mapOf("path" to ":${spec.containedType.projectName()}"))
                             sub.dependencies.add("compile", projectDependency)
                         }
+                        spec.attributes.forEach {
+                            if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
+                                val projectDependency = sub.dependencies.project(mapOf("path" to ":${it.projectName()}"))
+                                sub.dependencies.add("compile", projectDependency)
+                            }
+                        }
                     }
                 }
+
             }
         }
     }

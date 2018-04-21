@@ -2,7 +2,14 @@ package software.onepiece.limits.spec
 
 import java.io.Serializable
 
-data class ContainerSpec(val projectName: String, val typeName: String, val coordinatesType: TypeSpec, val refType: TypeSpec, val containedType: TypeSpec = refType) : Serializable, TypeSpec {
+data class ContainerSpec(
+        val projectName: String,
+        val typeName: String,
+        val coordinatesType: TypeSpec,
+        val refType: TypeSpec,
+        val attributes: List<TypeSpec> = emptyList(),
+        val containedType: TypeSpec = refType) : Serializable, TypeSpec {
+
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "${typeName()}.empty"
@@ -15,7 +22,11 @@ data class ContainerSpec(val projectName: String, val typeName: String, val coor
 
         ${generateImports(packageName)}
 
-        data class $typeName(private val map: Map<${coordinatesType.typeName()}, ${refType.typeName()}> = mapOf()${if (containedType != refType) ", val ${containedType.typeName().decapitalize()}: ${containedType.typeName()} = ${containedType.typeName()}()" else ""}): Iterable<${coordinatesType.typeName()}> {
+        data class $typeName(private val map: Map<${coordinatesType.typeName()}, ${refType.typeName()}> = mapOf()${
+            if (containedType != refType) ", val ${containedType.typeName().decapitalize()}: ${containedType.typeName()} = ${containedType.typeName()}()" else ""
+        }${
+            attributes.joinToString(separator = "") { ", val ${it.typeName().decapitalize()}: ${it.typeName()} = ${it.typeName()}.zero" }
+        }): Iterable<${coordinatesType.typeName()}> {
 
             companion object {
                 val empty = $typeName()
@@ -97,7 +108,7 @@ data class ContainerSpec(val projectName: String, val typeName: String, val coor
         """ else ""
 
     private fun generateImports(basePackageName: String) =
-            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.refType.projectName(), it.containedType.projectName()) }.flatten().toSet() - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
+            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.refType.projectName(), it.containedType.projectName()) }.flatten().toSet() + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
     private fun generateCopyFunctions(): String {
         var result = ""
