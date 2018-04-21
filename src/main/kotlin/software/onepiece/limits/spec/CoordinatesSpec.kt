@@ -26,6 +26,31 @@ data class CoordinatesSpec(val projectName: String, val typeName: String, val xT
                 }
 
                 val zero = of(${xType.typeName}.${xType.literalPrefix}0, ${yType.typeName}.${yType.literalPrefix}0)
+
+                val values: Iterable<$typeName> = AllIterable
+            }
+
+            private object AllIterable: Iterable<$typeName> {
+                override fun iterator() = AllIterator()
+            }
+
+            private class AllIterator: Iterator<$typeName> {
+                private var x = ${xType.typeName}.${xType.literalPrefix}0
+                private var y = ${yType.typeName}.${yType.literalPrefix}0
+                private var hasNext = true
+
+                override fun hasNext() = hasNext
+
+                override fun next() = of(x, y).also {
+                    if (x == ${xType.typeName}.${xType.literalPrefix}${xType.limit - 1} && y == ${yType.typeName}.${yType.literalPrefix}${yType.limit - 1}) {
+                        hasNext = false
+                    } else if (x == ${xType.typeName}.${xType.literalPrefix}${xType.limit - 1}) {
+                        x = ${xType.typeName}.${xType.literalPrefix}0
+                        y += ${yType.typeName}.${yType.literalPrefix}1
+                    } else {
+                        x += ${xType.typeName}.${xType.literalPrefix}1
+                    }
+                }
             }
 
             override fun compareTo(other: $typeName): Int {
