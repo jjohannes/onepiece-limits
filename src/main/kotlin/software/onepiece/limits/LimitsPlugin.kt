@@ -54,6 +54,13 @@ class LimitsPlugin: Plugin<Project> {
                                 sub.dependencies.add("compile", projectDependency)
                             }
                         }
+                    } else if (spec is ChainOfCoordinates) {
+                        spec.components.forEach {
+                            if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
+                                val projectDependency = sub.dependencies.project(mapOf("path" to ":${it.projectName()}"))
+                                sub.dependencies.add("compile", projectDependency)
+                            }
+                        }
                     }
                 }
 
@@ -66,6 +73,7 @@ class LimitsPlugin: Plugin<Project> {
                 is CoordinateSpec -> setOf(spec)
                 is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
                 is ContainerSpec -> setOf(spec) + collectSpecs(spec.refType) + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedType)
+                is ChainOfCoordinates -> setOf(spec) + spec.components
                 else -> setOf()
             }
 }
