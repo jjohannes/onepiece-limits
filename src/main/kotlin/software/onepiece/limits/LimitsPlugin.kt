@@ -44,10 +44,6 @@ class LimitsPlugin: Plugin<Project> {
                             val projectDependency = sub.dependencies.project(mapOf("path" to ":${spec.refType.projectName()}"))
                             sub.dependencies.add("compile", projectDependency)
                         }
-                        if (spec.containedType != spec.refType && spec.containedType.projectName() != spec.projectName && !spec.containedType.projectName().isEmpty()) {
-                            val projectDependency = sub.dependencies.project(mapOf("path" to ":${spec.containedType.projectName()}"))
-                            sub.dependencies.add("compile", projectDependency)
-                        }
                         spec.attributes.forEach {
                             if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
                                 val projectDependency = sub.dependencies.project(mapOf("path" to ":${it.projectName()}"))
@@ -72,7 +68,7 @@ class LimitsPlugin: Plugin<Project> {
             when(spec) {
                 is CoordinateSpec -> setOf(spec)
                 is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
-                is ContainerSpec -> setOf(spec) + collectSpecs(spec.refType) + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedType)
+                is ContainerSpec -> setOf(spec) + collectSpecs(spec.refType) + collectSpecs(spec.coordinatesType)
                 is ChainOfCoordinates -> setOf(spec) + spec.components
                 else -> setOf()
             }
