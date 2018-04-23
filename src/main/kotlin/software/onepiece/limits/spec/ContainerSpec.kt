@@ -5,17 +5,14 @@ import java.io.Serializable
 data class ContainerSpec(
         val projectName: String,
         val typeName: String,
-        val coordinatesType: TypeSpec,
-        val refType: TypeSpec,
-        val attributes: List<TypeSpec> = emptyList(),
-        val containedType: TypeSpec = refType) : Serializable, TypeSpec {
+        val coordinatesType: CoordinatesSpec,
+        val refType: Spec,
+        val attributes: List<Spec> = emptyList(),
+        val containedType: Spec = refType) : Serializable, TypeSpec {
 
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "${typeName()}.empty"
-    override fun generateSizeFields() = ""
-    override fun generateSizeFieldsSum() = ""
-    override fun generateIndexIteratorEntry() = ""
 
     override fun generate(packageName: String) = """
         package $packageName.entities.$projectName
@@ -150,7 +147,7 @@ data class ContainerSpec(
         return result
     }
 
-    private fun childrenHierarchy(childType: TypeSpec): List<ContainerSpec> = when (childType) {
+    private fun childrenHierarchy(childType: Spec): List<ContainerSpec> = when (childType) {
         is ContainerSpec -> listOf(childType) + childrenHierarchy(childType.containedType)
         else -> listOf()
     }

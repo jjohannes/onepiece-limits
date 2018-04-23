@@ -4,7 +4,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
-import software.onepiece.limits.spec.TypeSpec
+import software.onepiece.limits.spec.Spec
 import java.io.File
 
 open class LimitsGenerationTask : DefaultTask() {
@@ -13,7 +13,7 @@ open class LimitsGenerationTask : DefaultTask() {
     lateinit var packageName: String
 
     @Input
-    lateinit var typeSpecs: List<TypeSpec>
+    lateinit var typeSpecs: List<Spec>
 
     @OutputDirectory
     lateinit var out: File

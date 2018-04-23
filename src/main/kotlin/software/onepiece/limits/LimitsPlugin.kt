@@ -3,13 +3,10 @@ package software.onepiece.limits
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.internal.HasConvention
-import software.onepiece.limits.spec.ContainerSpec
-import software.onepiece.limits.spec.CoordinatesSpec
-import software.onepiece.limits.spec.CoordinateSpec
-import software.onepiece.limits.spec.TypeSpec
 import java.io.File
 import org.gradle.api.tasks.SourceSetContainer
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import software.onepiece.limits.spec.*
 
 
 class LimitsPlugin: Plugin<Project> {
@@ -64,10 +61,10 @@ class LimitsPlugin: Plugin<Project> {
         }
     }
 
-    private fun collectSpecs(spec: TypeSpec): Set<TypeSpec> =
+    private fun collectSpecs(spec: Spec): Set<Spec> =
             when(spec) {
                 is CoordinateSpec -> setOf(spec)
-                is CoordinatesSpec -> setOf(spec, spec.xType, spec.yType)
+                is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
                 is ContainerSpec -> setOf(spec) + collectSpecs(spec.refType) + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedType)
                 else -> setOf()
             }
