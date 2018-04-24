@@ -8,6 +8,7 @@ data class ContainerSpec(
         val coordinatesType: CoordinatesSpec,
         val containedType: Spec,
         val containedLocation: ChainOfCoordinates? = null, //TODO could potentially be a list
+        val additionalContainedTypes: List<Spec> = emptyList(),
         val attributes: List<Spec> = emptyList()) : Serializable, TypeSpec {
 
     override fun projectName() = projectName
@@ -31,7 +32,7 @@ data class ContainerSpec(
 
             override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator(map)
 
-            operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.typeName().decapitalize()}: ${containedLocation.rootContainer.typeName()}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.typeName().decapitalize()}[${containedLocation.components.joinToString(separator = "][") { "(map[position] as ${containedLocation.typeName()}).${it.typeName().decapitalize()}" }}] " else ""}else ${containedType.generateEmpty()}
+            operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}[${containedLocation.components.joinToString(separator = "][") { "(map[position] as ${containedLocation.typeName()}).${it.typeName().decapitalize()}" }}] " else ""}else ${containedType.generateEmpty()}
 
             fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.typeName().decapitalize()} == ${it.typeName()}.zero" }}
 
@@ -41,10 +42,30 @@ data class ContainerSpec(
             } else
                 ""
             }
+            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${it.typeName().decapitalize()}: ${it.typeName()}) = ${if (it is ContainerSpec) "if (${it.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${it.typeName().decapitalize()}))" }}
 
             fun without${containedType.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)
+            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun without${it.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)" }}
             ${generateCopyFunctions()}
-            private class IndexIterator(val map: Map<${coordinatesType.typeName()}, Any>) : Iterator<${coordinatesType.typeName()}> {
+            ${generateIndexIterator(containedType.typeName())}
+            ${additionalContainedTypes.joinToString(separator = "\n            ") { generateAccess(it) }}
+            ${additionalContainedTypes.joinToString(separator = "\n            ") { generateIndexIterator(it.typeName()) }}
+            ${generateLoopIterator()}
+        }
+        """.trimIndent()
+
+    private fun generateAccess(type: Spec) = """
+            val ${type.typeName().decapitalize()}s = ${type.typeName()}Access(map)
+
+            class ${type.typeName()}Access(val map: Map<LibraryCoordinate, Any>) : Iterable<LibraryCoordinate> {
+                override fun iterator(): Iterator<LibraryCoordinate> = IndexIterator${type.typeName()}(map)
+
+                operator fun get(position: ${coordinatesType.typeName()}) = if (map[position] is ${type.typeName()}) map[position]!! as ${type.typeName()} else ${type.generateEmpty()}
+            }
+        """
+
+    private fun generateIndexIterator(type: String) = """
+            private class IndexIterator${if (type != containedType.typeName()) type else ""}(val map: Map<${coordinatesType.typeName()}, Any>) : Iterator<${coordinatesType.typeName()}> {
                 var idx = 0
                 var next: ${coordinatesType.typeName()}? = null
 
@@ -56,7 +77,7 @@ data class ContainerSpec(
                         return false
                     }
                     val coordinates = ${coordinatesType.generateIndexIteratorEntry()}
-                    if (map.containsKey(coordinates)) {
+                    if (map[coordinates] is $type${if (type == containedType.typeName() && containedLocation != null) "|| map[coordinates] is ${containedLocation.typeName()}" else ""}) {
                         next = coordinates
                     }
                     idx++
@@ -72,10 +93,7 @@ data class ContainerSpec(
                     return v
                 }
             }
-
-            ${generateLoopIterator()}
-        }
-        """.trimIndent()
+        """
 
     private fun generateLoopIterator() = if (coordinatesType is CoordinateSpec) """
             fun loopIterator() = LoopIterator()
@@ -108,7 +126,7 @@ data class ContainerSpec(
         """ else ""
 
     private fun generateImports(basePackageName: String) =
-            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + attributes.map { it.projectName() } + (if (containedLocation != null) setOf(containedLocation.rootContainer.projectName()) else emptySet()) - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
+            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
     private fun generateCopyFunctions(): String {
         var result = ""
