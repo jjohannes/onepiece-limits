@@ -7,6 +7,7 @@ data class ContainerSpec(
         val typeName: String,
         val coordinatesType: CoordinatesSpec,
         val containedType: Spec,
+        val containedLocation: ChainOfCoordinates? = null, //TODO could potentially be a list
         val attributes: List<Spec> = emptyList()) : Serializable, TypeSpec {
 
     override fun projectName() = projectName
@@ -18,7 +19,7 @@ data class ContainerSpec(
 
         ${generateImports(packageName)}
 
-        data class $typeName(private val map: Map<${coordinatesType.typeName()}, ${containedType.typeName()}> = mapOf()${
+        data class $typeName(private val map: Map<${coordinatesType.typeName()}, Any> = mapOf()${
             attributes.joinToString(separator = "") { ", val ${it.typeName().decapitalize()}: ${it.typeName()} = ${it.typeName()}.zero" }
         }): Iterable<${coordinatesType.typeName()}> {
 
@@ -30,15 +31,20 @@ data class ContainerSpec(
 
             override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator(map)
 
-            operator fun get(position: ${coordinatesType.typeName()}) = if (map.containsKey(position)) map[position]!! else ${containedType.generateEmpty()}
+            operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.typeName().decapitalize()}: ${containedLocation.rootContainer.typeName()}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.typeName().decapitalize()}[${containedLocation.components.joinToString(separator = "][") { "(map[position] as ${containedLocation.typeName()}).${it.typeName().decapitalize()}" }}] " else ""}else ${containedType.generateEmpty()}
 
             fun isEmpty() = map.isEmpty()
 
             fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))
+            ${if (containedLocation != null) {
+                "fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedLocation.typeName().decapitalize()}: ${containedLocation.typeName()}) = copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedLocation.typeName().decapitalize()}))"
+            } else
+                ""
+            }
 
             fun without${containedType.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)
             ${generateCopyFunctions()}
-            private class IndexIterator(val map: Map<${coordinatesType.typeName()}, ${containedType.typeName()}>) : Iterator<${coordinatesType.typeName()}> {
+            private class IndexIterator(val map: Map<${coordinatesType.typeName()}, Any>) : Iterator<${coordinatesType.typeName()}> {
                 var idx = 0
                 var next: ${coordinatesType.typeName()}? = null
 
@@ -102,7 +108,7 @@ data class ContainerSpec(
         """ else ""
 
     private fun generateImports(basePackageName: String) =
-            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
+            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + attributes.map { it.projectName() } + (if (containedLocation != null) setOf(containedLocation.rootContainer.projectName()) else emptySet()) - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
     private fun generateCopyFunctions(): String {
         var result = ""
@@ -136,8 +142,9 @@ data class ContainerSpec(
     }
 
     private fun childrenHierarchy(childType: Spec): List<ContainerSpec> = when (childType) {
-        is ContainerSpec -> listOf(childType) + childrenHierarchy(childType.containedType)
-        else -> listOf()
+        is ContainerSpec ->
+            listOf(childType) + if (childType.containedLocation == null) childrenHierarchy(childType.containedType) else emptyList()
+        else -> emptyList()
     }
 
 }
