@@ -34,7 +34,7 @@ data class ContainerSpec(
 
             fun isEmpty() = map.isEmpty()
 
-            fun with${containedType.typeName()}(entry: Pair<${coordinatesType.typeName()}, ${containedType.typeName()}>) = ${if (containedType is ContainerSpec) "if (entry.second.isEmpty()) copy(map = map - entry.first) else " else ""}copy(map = map + entry)
+            fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))
 
             fun without${containedType.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)
             ${generateCopyFunctions()}
@@ -113,23 +113,23 @@ data class ContainerSpec(
                 hierarchy[it].coordinatesType.typeName()
             }.distinct().joinToString(separator = "") {
                         "${it.decapitalize()}: $it, "
-                    }}entry: Pair<${hierarchy[index].coordinatesType.typeName()}, ${hierarchy[index].containedType.typeName()}>) =
-                with${containedType.typeName()}(${hierarchy[0].coordinatesType.typeName().decapitalize()} to this[${hierarchy[0].coordinatesType.typeName().decapitalize()}].with${hierarchy[index].containedType.typeName()}(${(1 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
+                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}: ${hierarchy[index].coordinatesType.typeName()}, ${hierarchy[index].containedType.typeName().decapitalize()}: ${hierarchy[index].containedType.typeName()}) =
+                with${containedType.typeName()}(${hierarchy[0].coordinatesType.typeName().decapitalize()}, this[${hierarchy[0].coordinatesType.typeName().decapitalize()}].with${hierarchy[index].containedType.typeName()}(${(1 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
                 hierarchy[it].coordinatesType.typeName()
             }.distinct().joinToString(separator = "") {
                         "${it.decapitalize()}, "
-                    }}entry))
+                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}, ${hierarchy[index].containedType.typeName().decapitalize()}))
 
             fun without${hierarchy[index].containedType.typeName()}(${(0 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
                 hierarchy[it].coordinatesType.typeName()
             }.distinct().joinToString(separator = "") {
                         "${it.decapitalize()}: $it, "
-                    }}entry: ${hierarchy[index].coordinatesType.typeName()}) =
-                with${containedType.typeName()}(${hierarchy[0].coordinatesType.typeName().decapitalize()} to this[${hierarchy[0].coordinatesType.typeName().decapitalize()}].without${hierarchy[index].containedType.typeName()}(${(1 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
+                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}: ${hierarchy[index].coordinatesType.typeName()}) =
+                with${containedType.typeName()}(${hierarchy[0].coordinatesType.typeName().decapitalize()}, this[${hierarchy[0].coordinatesType.typeName().decapitalize()}].without${hierarchy[index].containedType.typeName()}(${(1 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
                 hierarchy[it].coordinatesType.typeName()
             }.distinct().joinToString(separator = "") {
                         "${it.decapitalize()}, "
-                    }}entry))
+                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}))
             """
         }
         return result
