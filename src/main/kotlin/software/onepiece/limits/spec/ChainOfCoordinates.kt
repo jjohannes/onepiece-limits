@@ -2,7 +2,7 @@ package software.onepiece.limits.spec
 
 import java.io.Serializable
 
-data class ChainOfCoordinates(val projectName: String, val typeName: String, val rootContainer: Spec, val components: List<CoordinatesSpec> = emptyList()) : Serializable, Spec {
+data class ChainOfCoordinates(val projectName: String, val typeName: String, val rootContainer: String, val components: List<CoordinatesSpec> = emptyList()) : Serializable, Spec {
 
     override fun projectName() = projectName
     override fun typeName() = typeName
