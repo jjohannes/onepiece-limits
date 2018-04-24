@@ -64,11 +64,11 @@ class LimitsPlugin: Plugin<Project> {
         }
     }
 
-    private fun collectSpecs(spec: Spec): Set<Spec> =
+    private fun collectSpecs(spec: Spec?): Set<Spec> =
             when(spec) {
                 is CoordinateSpec -> setOf(spec)
                 is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
-                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + collectSpecs(spec.coordinatesType)
+                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedLocation)
                 is ChainOfCoordinates -> setOf(spec) + spec.components
                 else -> setOf()
             }
