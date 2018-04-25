@@ -21,7 +21,7 @@ data class ContainerSpec(
         ${generateImports(packageName)}
 
         data class $typeName(private val map: Map<${coordinatesType.typeName()}, Any> = mapOf()${
-            attributes.joinToString(separator = "") { ", val ${it.typeName().decapitalize()}: ${it.typeName()} = ${it.typeName()}.zero" }
+            attributes.joinToString(separator = "") { ", val ${it.typeName().decapitalize()}: ${it.typeName()} = ${it.generateEmpty()}" }
         }): Iterable<${coordinatesType.typeName()}> {
 
             companion object {
@@ -34,7 +34,7 @@ data class ContainerSpec(
 
             operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}[${containedLocation.components.joinToString(separator = "][") { "(map[position] as ${containedLocation.typeName()}).${it.typeName().decapitalize()}" }}] " else ""}else ${containedType.generateEmpty()}
 
-            fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.typeName().decapitalize()} == ${it.typeName()}.zero" }}
+            fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.typeName().decapitalize()} == ${it.generateEmpty()}" }}
 
             fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))
             ${if (containedLocation != null) {
@@ -57,8 +57,8 @@ data class ContainerSpec(
     private fun generateAccess(type: Spec) = """
             val ${type.typeName().decapitalize()}s = ${type.typeName()}Access(map)
 
-            class ${type.typeName()}Access(val map: Map<LibraryCoordinate, Any>) : Iterable<LibraryCoordinate> {
-                override fun iterator(): Iterator<LibraryCoordinate> = IndexIterator${type.typeName()}(map)
+            class ${type.typeName()}Access(val map: Map<${coordinatesType.typeName()}, Any>) : Iterable<${coordinatesType.typeName()}> {
+                override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator${type.typeName()}(map)
 
                 operator fun get(position: ${coordinatesType.typeName()}) = if (map[position] is ${type.typeName()}) map[position]!! as ${type.typeName()} else ${type.generateEmpty()}
             }
@@ -126,7 +126,7 @@ data class ContainerSpec(
         """ else ""
 
     private fun generateImports(basePackageName: String) =
-            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
+            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + additionalContainedTypes.map { it.projectName() } + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
     private fun generateCopyFunctions(): String {
         var result = ""

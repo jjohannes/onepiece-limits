@@ -44,6 +44,16 @@ class LimitsPlugin: Plugin<Project> {
                             val projectDependency = sub.dependencies.project(mapOf("path" to ":${spec.containedType.projectName()}"))
                             sub.dependencies.add("compile", projectDependency)
                         }
+                        if (spec.coordinatesType.projectName() != spec.projectName && !spec.coordinatesType.projectName().isEmpty()) {
+                            val projectDependency = sub.dependencies.project(mapOf("path" to ":${spec.coordinatesType.projectName()}"))
+                            sub.dependencies.add("compile", projectDependency)
+                        }
+                        spec.additionalContainedTypes.forEach {
+                            if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
+                                val projectDependency = sub.dependencies.project(mapOf("path" to ":${it.projectName()}"))
+                                sub.dependencies.add("compile", projectDependency)
+                            }
+                        }
                         spec.attributes.forEach {
                             if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
                                 val projectDependency = sub.dependencies.project(mapOf("path" to ":${it.projectName()}"))
