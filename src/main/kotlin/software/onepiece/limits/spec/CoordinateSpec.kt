@@ -5,7 +5,6 @@ import java.io.Serializable
 data class CoordinateSpec(val projectName: String, val limit: Int, val typeName: String, val literalPrefix: String) : Serializable, CoordinatesSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
-    override fun generateEmpty() = "$typeName.${literalPrefix}0"
     override fun generateSizeFields() = "const val size = $limit"
     override fun generateSizeFieldsSum() =  "size"
     override fun generateIndexIteratorEntry() =  "$typeName.of(idx)"

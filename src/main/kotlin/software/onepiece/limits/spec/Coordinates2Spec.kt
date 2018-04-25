@@ -5,7 +5,6 @@ import java.io.Serializable
 data class Coordinates2Spec(val projectName: String, val typeName: String, val xType: CoordinateSpec, val yType: CoordinateSpec) : Serializable, CoordinatesSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
-    override fun generateEmpty() = "$typeName.of(${xType.typeName}.${xType.literalPrefix}0, ${yType.typeName}.${yType.literalPrefix}0)"
     override fun generateSizeFields() = "const val width = ${xType.limit}; const val height = ${yType.limit}"
     override fun generateSizeFieldsSum() = "width * height"
     override fun generateIndexIteratorEntry() = "$typeName.of(${xType.typeName}.of(idx - (idx / width) * width), ${yType.typeName}.of(idx / width))"
