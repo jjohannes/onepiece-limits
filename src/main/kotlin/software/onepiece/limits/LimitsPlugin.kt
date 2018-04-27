@@ -15,7 +15,14 @@ class LimitsPlugin: Plugin<Project> {
         val extension = project.extensions.create("limits", LimitsPluginExtension::class.java)
 
         project.afterEvaluate {
-            val allSpecs = extension.specs.map { spec -> collectSpecs(spec) }.flatten().distinct().groupBy { it.projectName() }
+            val collectedSpecs = extension.specs.map { spec -> collectSpecs(spec) }.flatten().distinct()
+            val allSpecs = collectedSpecs.map {
+                if (it is ContainerSpec) {
+                    it.copy(attributes = it.attributes.map { ref -> if (ref is SpecReference) collectedSpecs.find { it.typeName() == ref.typeName }!! else ref })
+                } else {
+                    it
+                }
+            }.groupBy { it.projectName() }
 
             allSpecs.forEach { projectName, specs ->
                 val sub = project.findProject(":$projectName") ?:
