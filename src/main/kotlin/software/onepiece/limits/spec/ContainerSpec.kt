@@ -32,7 +32,7 @@ data class ContainerSpec(
 
             override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator(map)
 
-            operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}[${containedLocation.components.joinToString(separator = "][") { "(map[position] as ${containedLocation.typeName()}).${it.typeName().decapitalize()}" }}] " else ""}else ${containedType.generateEmpty()}
+            operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}${(0 until containedLocation.components.size).joinToString(separator = "") { "${if(containedLocation.componentTypes.containsKey(it)) ".${containedLocation.componentTypes[it]!!}" else ""}[(map[position] as ${containedLocation.typeName()}).${containedLocation.coordName(it)}]" }} " else ""}else ${containedType.generateEmpty()}
 
             fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.typeName().decapitalize()} == ${it.generateEmpty()}" }}
 
@@ -43,10 +43,11 @@ data class ContainerSpec(
                 ""
             }
             ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${it.typeName().decapitalize()}: ${it.typeName()}) = ${if (it is ContainerSpec) "if (${it.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${it.typeName().decapitalize()}))" }}
+            ${attributes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${it.typeName().decapitalize()}: ${it.typeName()}) = copy(${it.typeName().decapitalize()} = ${it.typeName().decapitalize()})" }}
 
             fun without${containedType.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)
             ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun without${it.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)" }}
-            ${generateCopyFunctions()}
+            ${generateCopyFunctions(this)}
             ${generateIndexIterator(containedType.typeName())}
             ${additionalContainedTypes.joinToString(separator = "\n            ") { generateAccess(it) }}
             ${additionalContainedTypes.joinToString(separator = "\n            ") { generateIndexIterator(it.typeName()) }}
@@ -126,43 +127,54 @@ data class ContainerSpec(
         """ else ""
 
     private fun generateImports(basePackageName: String) =
-            (childrenHierarchy(this).map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + additionalContainedTypes.map { it.projectName() } + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
+            (collectChildTypes(buildTypeGraph(this)).distinct().map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + additionalContainedTypes.map { it.projectName() } + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
-    private fun generateCopyFunctions(): String {
+    private fun collectChildTypes(node: Node): List<ContainerSpec> = listOf(node.current) + node.children.map { collectChildTypes(it.value) }.flatten()
+
+
+    private fun generateCopyFunctions(type: ContainerSpec) = visitGraph("", buildTypeGraph(type), emptyList())
+
+    private fun visitGraph(name: String, node: Node, parents: List<Pair<String, ContainerSpec>>): String {
         var result = ""
-        val hierarchy = childrenHierarchy(this)
-        (1 until hierarchy.size).forEach { index ->
-            result += """
-            fun with${hierarchy[index].containedType.typeName()}(${(0 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
-                hierarchy[it].coordinatesType.typeName()
-            }.distinct().joinToString(separator = "") {
-                        "${it.decapitalize()}: $it, "
-                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}: ${hierarchy[index].coordinatesType.typeName()}, ${hierarchy[index].containedType.typeName().decapitalize()}: ${hierarchy[index].containedType.typeName()}) =
-                with${containedType.typeName()}(${hierarchy[0].coordinatesType.typeName().decapitalize()}, this[${hierarchy[0].coordinatesType.typeName().decapitalize()}].with${hierarchy[index].containedType.typeName()}(${(1 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
-                hierarchy[it].coordinatesType.typeName()
-            }.distinct().joinToString(separator = "") {
-                        "${it.decapitalize()}, "
-                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}, ${hierarchy[index].containedType.typeName().decapitalize()}))
+        if (!parents.isEmpty()) {
+            val p = parents.subList(1, parents.size)
+            val accessName = (if (parents.size > 1) parents[1].first else name)
+            val isAttribute = attributes.any { it.typeName() == accessName }
+            val accessCode = if (accessName != "") if (isAttribute) accessName.decapitalize() else "${parents[0].second.coordinatesType.typeName().decapitalize()}, ${accessName.decapitalize()}s[${parents[0].second.coordinatesType.typeName().decapitalize()}]" else "${parents[0].second.coordinatesType.typeName().decapitalize()}, this[${parents[0].second.coordinatesType.typeName().decapitalize()}]"
 
-            fun without${hierarchy[index].containedType.typeName()}(${(0 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
-                hierarchy[it].coordinatesType.typeName()
-            }.distinct().joinToString(separator = "") {
-                        "${it.decapitalize()}: $it, "
-                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}: ${hierarchy[index].coordinatesType.typeName()}) =
-                with${containedType.typeName()}(${hierarchy[0].coordinatesType.typeName().decapitalize()}, this[${hierarchy[0].coordinatesType.typeName().decapitalize()}].without${hierarchy[index].containedType.typeName()}(${(1 until index).filter { hierarchy[it].coordinatesType != hierarchy[index].coordinatesType }.map {
-                hierarchy[it].coordinatesType.typeName()
-            }.distinct().joinToString(separator = "") {
-                        "${it.decapitalize()}, "
-                    }}${hierarchy[index].coordinatesType.typeName().decapitalize()}))
+            val requiredCoordinates = if (isAttribute) p else parents
+
+            with(node.current) {
+                result += """
+            fun with${containedType.typeName()}(${requiredCoordinates.joinToString(separator = "") {
+                    "${it.second.coordinatesType.typeName().decapitalize()}: ${it.second.coordinatesType.typeName()}, "
+                }}${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) =
+                with${if (accessName != "") accessName else parents[0].second.containedType.typeName()}($accessCode.with${containedType.typeName()}(${p.joinToString(separator = "") {
+                    "${it.second.coordinatesType.typeName().decapitalize()}, "
+                }}${coordinatesType.typeName().decapitalize()}, ${containedType.typeName().decapitalize()}))
+
+            fun without${containedType.typeName()}(${requiredCoordinates.joinToString(separator = "") {
+                    "${it.second.coordinatesType.typeName().decapitalize()}: ${it.second.coordinatesType.typeName()}, "
+                }}${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}) =
+                with${if (accessName != "") accessName else parents[0].second.containedType.typeName()}($accessCode.without${containedType.typeName()}(${p.joinToString(separator = "") {
+                    "${it.second.coordinatesType.typeName().decapitalize()}, "
+                }}${coordinatesType.typeName().decapitalize()}))
             """
+            }
+        }
+        node.children.forEach {
+            result += visitGraph(it.key, it.value, parents + (name to node.current))
         }
         return result
     }
 
-    private fun childrenHierarchy(childType: Spec): List<ContainerSpec> = when (childType) {
-        is ContainerSpec ->
-            listOf(childType) + if (childType.containedLocation == null) childrenHierarchy(childType.containedType) else emptyList()
-        else -> emptyList()
-    }
+    private fun buildTypeGraph(childType: ContainerSpec): Node =
+        Node(childType, emptyMap<String, Node>()
+                + if (childType.containedType is ContainerSpec && childType.containedLocation == null) { mapOf("" to buildTypeGraph(childType.containedType)) } else { emptyMap() }
+                + childType.additionalContainedTypes.filter { it is ContainerSpec }.map { it.typeName() to buildTypeGraph(it as ContainerSpec)}
+                + childType.attributes.filter { it is ContainerSpec }.map { it.typeName() to buildTypeGraph(it as ContainerSpec) }
+        )
+
+    private data class Node(val current: ContainerSpec, val children: Map<String, Node> = emptyMap())
 
 }
