@@ -24,6 +24,8 @@ data class Coordinates2Spec(val projectName: String, val typeName: String, val x
                     return pool[key]!!
                 }
 
+                fun of(x: Int, y: Int) = of(x.to${xType.typeName}(), y.to${yType.typeName}())
+
                 val zero = of(${xType.typeName}.${xType.literalPrefix}0, ${yType.typeName}.${yType.literalPrefix}0)
 
                 val values: Iterable<$typeName> = AllIterable
