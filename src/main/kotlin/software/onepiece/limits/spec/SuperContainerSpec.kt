@@ -13,6 +13,8 @@ class SuperContainerSpec(val projectName: String, val typeName: String) : Serial
 
         interface $typeName {
             operator fun get(x: Int, y: Int, container: Any): Any
+            fun xMax(): Int
+            fun yMax(): Int
         }
     """.trimIndent()
 }

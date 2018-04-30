@@ -30,8 +30,12 @@ data class ContainerSpec(
 
                 ${coordinatesType.generateSizeFields()}
             }
-            ${if(superType != null) "override fun get(x: Int, y: Int, container: Any) = get(${coordinatesType.typeName()}.of(x, y)${if (containedLocation != null) ", container as ${containedLocation.rootContainer}" else ""})" else ""}
+            ${if(superType != null) """
+            override fun get(x: Int, y: Int, container: Any) = get(${coordinatesType.typeName()}.of(x, y)${if (containedLocation != null) ", container as ${containedLocation.rootContainer}" else ""})
 
+            override fun xMax() = ${(coordinatesType as Coordinates2Spec).xType.limit}
+            override fun yMax() = ${coordinatesType.yType.limit}
+            """ else ""}
             override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator${containedType.typeName()}(map)
 
             operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}${(0 until containedLocation.components.size).joinToString(separator = "") { "${if(containedLocation.componentAccess.containsKey(it)) ".${containedLocation.componentAccess[it]!!}" else ""}[(map[position] as ${containedLocation.typeName()}).${containedLocation.coordName(it)}]" }} " else ""}else ${containedType.generateEmpty()}
