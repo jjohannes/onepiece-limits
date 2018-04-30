@@ -11,12 +11,14 @@ data class ContainerSpec(
         val additionalContainedTypes: List<Spec> = emptyList(),
         val attributes: List<Spec> = emptyList()) : Serializable, TypeSpec {
 
+    private val allContainedTypes = if (additionalContainedTypes.isEmpty()) emptyList() else listOf(containedType) + additionalContainedTypes
+
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "${typeName()}.empty"
 
     override fun generate(packageName: String) = """
-        package $packageName.entities.$projectName
+        package $packageName.entities.$projectName ${println("--->$typeName").let { "" }}
 
         ${generateImports(packageName)}
 
@@ -30,27 +32,35 @@ data class ContainerSpec(
                 ${coordinatesType.generateSizeFields()}
             }
 
-            override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator(map)
+            override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator${containedType.typeName()}(map)
 
             operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}${(0 until containedLocation.components.size).joinToString(separator = "") { "${if(containedLocation.componentTypes.containsKey(it)) ".${containedLocation.componentTypes[it]!!}" else ""}[(map[position] as ${containedLocation.typeName()}).${containedLocation.coordName(it)}]" }} " else ""}else ${containedType.generateEmpty()}
 
             fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.typeName().decapitalize()} == ${it.generateEmpty()}" }}
 
-            fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))
+            ${if (additionalContainedTypes.isEmpty()) {
+                "fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))"
+            } else
+                ""
+            }
             ${if (containedLocation != null) {
                 "fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedLocation.typeName().decapitalize()}: ${containedLocation.typeName()}) = copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedLocation.typeName().decapitalize()}))"
             } else
                 ""
             }
-            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${it.typeName().decapitalize()}: ${it.typeName()}) = ${if (it is ContainerSpec) "if (${it.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${it.typeName().decapitalize()}))" }}
+            ${allContainedTypes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${it.typeName().decapitalize()}: ${it.typeName()}) = ${if (it is ContainerSpec) "if (${it.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${it.typeName().decapitalize()}))" }}
             ${attributes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${it.typeName().decapitalize()}: ${it.typeName()}) = copy(${it.typeName().decapitalize()} = ${it.typeName().decapitalize()})" }}
 
-            fun without${containedType.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)
-            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun without${it.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)" }}
-            ${generateCopyFunctions(this)}
-            ${generateIndexIterator(containedType.typeName())}
-            ${additionalContainedTypes.joinToString(separator = "\n            ") { generateAccess(it) }}
-            ${additionalContainedTypes.joinToString(separator = "\n            ") { generateIndexIterator(it.typeName()) }}
+            ${if (additionalContainedTypes.isEmpty()) {
+                "fun without${containedType.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)"
+            } else
+                ""
+            }
+            ${allContainedTypes.joinToString(separator = "\n            ") { "fun without${it.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)" }}
+            ${generateCopyFunctions()}
+            ${if (additionalContainedTypes.isEmpty()) generateIndexIterator(containedType.typeName()) else ""}
+            ${allContainedTypes.joinToString(separator = "\n            ") { generateAccess(it) }}
+            ${allContainedTypes.joinToString(separator = "\n            ") { generateIndexIterator(it.typeName()) }}
             ${generateLoopIterator()}
         }
         """.trimIndent()
@@ -66,7 +76,7 @@ data class ContainerSpec(
         """
 
     private fun generateIndexIterator(type: String) = """
-            private class IndexIterator${if (type != containedType.typeName()) type else ""}(val map: Map<${coordinatesType.typeName()}, Any>) : Iterator<${coordinatesType.typeName()}> {
+            private class IndexIterator$type(val map: Map<${coordinatesType.typeName()}, Any>) : Iterator<${coordinatesType.typeName()}> {
                 var idx = 0
                 var next: ${coordinatesType.typeName()}? = null
 
@@ -132,7 +142,7 @@ data class ContainerSpec(
     private fun collectChildTypes(node: Node): List<ContainerSpec> = listOf(node.current) + node.children.map { collectChildTypes(it.value) }.flatten()
 
 
-    private fun generateCopyFunctions(type: ContainerSpec) = visitGraph("", buildTypeGraph(type), emptyList())
+    private fun generateCopyFunctions() = visitGraph("", buildTypeGraph(this), emptyList())
 
     private fun visitGraph(name: String, node: Node, parents: List<Pair<String, ContainerSpec>>): String {
         var result = ""
@@ -170,8 +180,8 @@ data class ContainerSpec(
 
     private fun buildTypeGraph(childType: ContainerSpec): Node =
         Node(childType, emptyMap<String, Node>()
-                + if (childType.containedType is ContainerSpec && childType.containedLocation == null) { mapOf("" to buildTypeGraph(childType.containedType)) } else { emptyMap() }
-                + childType.additionalContainedTypes.filter { it is ContainerSpec }.map { it.typeName() to buildTypeGraph(it as ContainerSpec)}
+                + if (childType.containedType is ContainerSpec && childType.containedLocation == null && childType.additionalContainedTypes.isEmpty()) { mapOf("" to buildTypeGraph(childType.containedType)) } else { emptyMap() }
+                + childType.allContainedTypes.filter { it is ContainerSpec }.map { it.typeName() to buildTypeGraph(it as ContainerSpec)}
                 + childType.attributes.filter { it is ContainerSpec }.map { it.typeName() to buildTypeGraph(it as ContainerSpec) }
         )
 
