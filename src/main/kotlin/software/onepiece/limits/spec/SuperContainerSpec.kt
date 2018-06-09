@@ -2,7 +2,7 @@ package software.onepiece.limits.spec
 
 import java.io.Serializable
 
-class SuperContainerSpec(val projectName: String, val typeName: String) : Serializable, TypeSpec {
+class SuperContainerSpec(val projectName: String, val typeName: String, val containedType: Spec) : Serializable, TypeSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
 
@@ -12,7 +12,7 @@ class SuperContainerSpec(val projectName: String, val typeName: String) : Serial
         package $packageName.entities.$projectName
 
         interface $typeName {
-            operator fun get(x: Int, y: Int, container: Any): Any
+            operator fun get(x: Int, y: Int, container: Any): ${containedType.typeName()}
             fun xMax(): Int
             fun yMax(): Int
         }
