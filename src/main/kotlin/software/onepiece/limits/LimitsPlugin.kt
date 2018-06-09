@@ -85,7 +85,7 @@ class LimitsPlugin: Plugin<Project> {
             when(spec) {
                 is CoordinateSpec -> setOf(spec)
                 is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
-                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + spec.additionalContainedTypes.map { collectSpecs(it) }.flatten() + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedLocation)
+                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + spec.additionalContainedTypes.map { collectSpecs(it) }.flatten() + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedLocation) + spec.attributes.map { collectSpecs(it) }.flatten()
                 is SuperContainerSpec -> setOf(spec)
                 is ChainOfCoordinates -> setOf(spec) + spec.components
                 else -> setOf()
