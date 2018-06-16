@@ -39,14 +39,11 @@ data class ContainerSpec(
             override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator${containedType.typeName()}(map)
 
             operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}${(0 until containedLocation.components.size).joinToString(separator = "") { "${if(containedLocation.componentAccess.containsKey(it)) ".${containedLocation.componentAccess[it]!!}" else ""}[(map[position] as ${containedLocation.typeName()}).${containedLocation.coordName(it)}]" }} " else ""}else ${containedType.generateEmpty()}
+            ${if (containedLocation != null) "fun getLocation(position: ${coordinatesType.typeName()}) = if (map[position] is ${containedLocation.typeName()}) map[position] as StickerPosition else null" else ""}
 
             fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.typeName().decapitalize()} == ${it.generateEmpty()}" }}
 
-            ${if (additionalContainedTypes.isEmpty()) {
-                "fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))"
-            } else
-                ""
-            }
+            fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))
             ${if (containedLocation != null) {
                 "fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedLocation.typeName().decapitalize()}: ${containedLocation.typeName()}) = copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedLocation.typeName().decapitalize()}))"
             } else
