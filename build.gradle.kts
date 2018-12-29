@@ -1,17 +1,24 @@
 plugins {
-    kotlin("jvm") version "1.2.21"
-    `maven-publish`
-}
+    `kotlin-dsl`
+ }
 
-group = "software.onepiece.limits"
+group = "software.onepiece"
 version = "0.0.1"
 
 repositories {
     gradlePluginPortal()
     mavenCentral()
 }
+
 dependencies {
-    compileOnly(gradleApi())
-    compile(kotlin("stdlib-jre8", "1.2.21"))
-    compile("org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin:1.2.21")
+    implementation("org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin:1.3.0")
 }
+
+//gradlePlugin {
+//    plugins {
+//        register("limits") {
+//            id = "software.onepiece.limits"
+//            implementationClass = "software.onepiece.limits.LimitsPlugin"
+//        }
+//    }
+//}

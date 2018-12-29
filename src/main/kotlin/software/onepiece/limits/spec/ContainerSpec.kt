@@ -31,10 +31,10 @@ data class ContainerSpec(
                 ${coordinatesType.generateSizeFields()}
             }
             ${if(superType != null) """
-            override fun get(x: Int, y: Int, container: Any) = get(${coordinatesType.typeName()}.of(x, y)${if (containedLocation != null) ", container as ${containedLocation.rootContainer}" else ""})
+            override fun get(x: Int, y: Int, container: Any) = get(${coordinatesType.typeName()}.of(x${if (coordinatesType is Coordinates2Spec) ", y" else ""})${if (containedLocation != null) ", container as ${containedLocation.rootContainer}" else ""})
 
-            override fun xMax() = ${(coordinatesType as Coordinates2Spec).xType.limit}
-            override fun yMax() = ${coordinatesType.yType.limit}
+            override fun xMax() = ${(coordinatesType as? Coordinates2Spec)?.xType?.limit ?: (coordinatesType as CoordinateSpec).limit}
+            override fun yMax() = ${(coordinatesType as? Coordinates2Spec)?.yType?.limit ?: 1}
             """ else ""}
             override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator${containedType.typeName()}(map)
 
