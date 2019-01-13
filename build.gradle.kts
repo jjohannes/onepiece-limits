@@ -2,7 +2,7 @@ plugins {
     `kotlin-dsl`
  }
 
-group = "software.onepiece"
+group = "software.onepiece.limits"
 version = "0.0.1"
 
 repositories {
