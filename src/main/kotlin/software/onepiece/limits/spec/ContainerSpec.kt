@@ -22,7 +22,7 @@ data class ContainerSpec(
         ${generateImports(packageName)}
 
         data class $typeName(private val map: Map<${coordinatesType.typeName()}, Any> = mapOf()${
-            attributes.joinToString(separator = "") { ", val ${it.typeName().decapitalize()}: ${it.typeName()} = ${it.generateEmpty()}" }
+            attributes.joinToString(separator = "") { ", val ${it.propertyName()}: ${it.typeName()} = ${it.generateEmpty()}" }
         }): ${if (superType != null) "${superType.typeName()}, " else "" }Iterable<${coordinatesType.typeName()}> {
 
             companion object {
@@ -41,23 +41,23 @@ data class ContainerSpec(
             operator fun get(position: ${coordinatesType.typeName()}${if (containedLocation != null) ", ${containedLocation.rootContainer.decapitalize()}: ${containedLocation.rootContainer}" else ""}) = if (map[position] is ${containedType.typeName()}) map[position]!! as ${containedType.typeName()} ${if (containedLocation != null) "else if (map[position] is ${containedLocation.typeName()}) ${containedLocation.rootContainer.decapitalize()}${(0 until containedLocation.components.size).joinToString(separator = "") { "${if(containedLocation.componentAccess.containsKey(it)) ".${containedLocation.componentAccess[it]!!}" else ""}[(map[position] as ${containedLocation.typeName()}).${containedLocation.coordName(it)}]" }} " else ""}else ${containedType.generateEmpty()}
             ${if (containedLocation != null) "fun getLocation(position: ${coordinatesType.typeName()}) = if (map[position] is ${containedLocation.typeName()}) map[position] as StickerPosition else null" else ""}
 
-            fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.typeName().decapitalize()} == ${it.generateEmpty()}" }}
+            fun isEmpty() = map.isEmpty()${attributes.joinToString(separator = "") { " && ${it.propertyName()} == ${it.generateEmpty()}" }}
 
-            fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedType.typeName().decapitalize()}))
+            fun with${containedType.propertyName().capitalize()}(${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${containedType.propertyName()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.propertyName()}.isEmpty()) copy(map = map - ${coordinatesType.propertyName()}) else " else ""}copy(map = map + (${coordinatesType.propertyName()} to ${containedType.propertyName()}))
             ${if (containedLocation != null) {
-                "fun with${containedType.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedLocation.typeName().decapitalize()}: ${containedLocation.typeName()}) = copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${containedLocation.typeName().decapitalize()}))"
+                "fun with${containedType.propertyName().capitalize()}(${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${containedLocation.propertyName()}: ${containedLocation.typeName()}) = copy(map = map + (${coordinatesType.propertyName()} to ${containedLocation.propertyName()}))"
             } else
                 ""
             }
-            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${it.typeName().decapitalize()}: ${it.typeName()}) = ${if (it is ContainerSpec) "if (${it.typeName().decapitalize()}.isEmpty()) copy(map = map - ${coordinatesType.typeName().decapitalize()}) else " else ""}copy(map = map + (${coordinatesType.typeName().decapitalize()} to ${it.typeName().decapitalize()}))" }}
-            ${attributes.joinToString(separator = "\n            ") { "fun with${it.typeName()}(${it.typeName().decapitalize()}: ${it.typeName()}) = copy(${it.typeName().decapitalize()} = ${it.typeName().decapitalize()})" }}
+            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun with${it.propertyName().capitalize()}(${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${it.propertyName()}: ${it.typeName()}) = ${if (it is ContainerSpec) "if (${it.propertyName()}.isEmpty()) copy(map = map - ${coordinatesType.propertyName()}) else " else ""}copy(map = map + (${coordinatesType.propertyName()} to ${it.propertyName()}))" }}
+            ${attributes.joinToString(separator = "\n            ") { "fun with${it.propertyName().capitalize()}(${it.propertyName()}: ${it.typeName()}) = copy(${it.propertyName()} = ${it.propertyName()})" }}
 
             ${if (additionalContainedTypes.isEmpty()) {
-                "fun without${containedType.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)"
+                "fun without${containedType.propertyName().capitalize()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)"
             } else
                 ""
             }
-            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun without${it.typeName()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)" }}
+            ${additionalContainedTypes.joinToString(separator = "\n            ") { "fun without${it.propertyName().capitalize()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)" }}
             ${generateCopyFunctions()}
             ${generateIndexIterator(containedType.typeName())}
             ${additionalContainedTypes.joinToString(separator = "\n            ") { generateAccess(it) }}
@@ -67,7 +67,7 @@ data class ContainerSpec(
         """.trimIndent()
 
     private fun generateAccess(type: Spec) = """
-            val ${type.typeName().decapitalize()}s = ${type.typeName()}Access(map)
+            val ${type.propertyName()}s = ${type.typeName()}Access(map)
 
             class ${type.typeName()}Access(val map: Map<${coordinatesType.typeName()}, Any>) : Iterable<${coordinatesType.typeName()}> {
                 override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator${type.typeName()}(map)
@@ -151,25 +151,25 @@ data class ContainerSpec(
             val p = parents.subList(1, parents.size)
             val accessName = (if (parents.size > 1) parents[1].first else name)
             val isAttribute = attributes.any { it.typeName() == accessName }
-            val accessCode = if (accessName != "") if (isAttribute) accessName.decapitalize() else "${parents[0].second.coordinatesType.typeName().decapitalize()}, ${accessName.decapitalize()}s[${parents[0].second.coordinatesType.typeName().decapitalize()}]" else "${parents[0].second.coordinatesType.typeName().decapitalize()}, this[${parents[0].second.coordinatesType.typeName().decapitalize()}]"
+            val accessCode = if (accessName != "") if (isAttribute) accessName.decapitalize() else "${parents[0].second.coordinatesType.propertyName()}, ${accessName.decapitalize()}s[${parents[0].second.coordinatesType.propertyName()}]" else "${parents[0].second.coordinatesType.propertyName()}, this[${parents[0].second.coordinatesType.propertyName()}]"
 
             val requiredCoordinates = if (isAttribute) p else parents
 
             with(node.current) {
                 result += """
-            fun with${containedType.typeName()}(${requiredCoordinates.joinToString(separator = "") {
-                    "${it.second.coordinatesType.typeName().decapitalize()}: ${it.second.coordinatesType.typeName()}, "
-                }}${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}, ${containedType.typeName().decapitalize()}: ${containedType.typeName()}) =
-                with${if (accessName != "") accessName else parents[0].second.containedType.typeName()}($accessCode.with${containedType.typeName()}(${p.joinToString(separator = "") {
-                    "${it.second.coordinatesType.typeName().decapitalize()}, "
-                }}${coordinatesType.typeName().decapitalize()}, ${containedType.typeName().decapitalize()}))
+            fun with${containedType.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
+                    "${it.second.coordinatesType.propertyName()}: ${it.second.coordinatesType.typeName()}, "
+                }}${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${containedType.propertyName()}: ${containedType.typeName()}) =
+                with${if (accessName != "") accessName else parents[0].second.containedType.propertyName().capitalize()}($accessCode.with${containedType.propertyName().capitalize()}(${p.joinToString(separator = "") {
+                    "${it.second.coordinatesType.propertyName()}, "
+                }}${coordinatesType.propertyName()}, ${containedType.propertyName()}))
 
-            fun without${containedType.typeName()}(${requiredCoordinates.joinToString(separator = "") {
-                    "${it.second.coordinatesType.typeName().decapitalize()}: ${it.second.coordinatesType.typeName()}, "
-                }}${coordinatesType.typeName().decapitalize()}: ${coordinatesType.typeName()}) =
-                with${if (accessName != "") accessName else parents[0].second.containedType.typeName()}($accessCode.without${containedType.typeName()}(${p.joinToString(separator = "") {
-                    "${it.second.coordinatesType.typeName().decapitalize()}, "
-                }}${coordinatesType.typeName().decapitalize()}))
+            fun without${containedType.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
+                    "${it.second.coordinatesType.propertyName()}: ${it.second.coordinatesType.typeName()}, "
+                }}${coordinatesType.propertyName()}: ${coordinatesType.typeName()}) =
+                with${if (accessName != "") accessName else parents[0].second.containedType.propertyName().capitalize()}($accessCode.without${containedType.propertyName().capitalize()}(${p.joinToString(separator = "") {
+                    "${it.second.coordinatesType.propertyName()}, "
+                }}${coordinatesType.propertyName()}))
             """
             }
         }
