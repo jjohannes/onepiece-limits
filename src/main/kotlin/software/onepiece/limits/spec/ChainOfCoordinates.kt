@@ -38,6 +38,6 @@ data class ChainOfCoordinates(val projectName: String, val typeName: String, val
     private fun generateImports(basePackageName: String) =
             components.joinToString(separator = "; ") { "import $basePackageName.entities.${it.projectName()}.*" }
 
-    fun coordName(idx: Int) = if (componentTypes.containsKey(idx)) componentTypes[idx]!! + components[idx].typeName() else components[idx].typeName().decapitalize()
+    fun coordName(idx: Int) = if (componentTypes.containsKey(idx)) componentTypes[idx]!! + components[idx].typeName() else components[idx].propertyName()
 
 }
