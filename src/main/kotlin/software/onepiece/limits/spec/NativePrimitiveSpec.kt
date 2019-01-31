@@ -1,8 +1,6 @@
 package software.onepiece.limits.spec
 
-import java.io.Serializable
-
-class NativePrimitiveSpec(val name: String, val typeName: String) : CoordinatesSpec, Serializable {
+class NativePrimitiveSpec(val name: String, val typeName: String) : CoordinatesSpec {
     override fun generateSizeFieldsSum() = ""
     override fun generateIndexIteratorEntry() = ""
     override fun generateSizeFields() = ""

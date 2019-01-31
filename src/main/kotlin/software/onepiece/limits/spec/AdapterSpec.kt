@@ -5,7 +5,7 @@ import java.io.Serializable
 class AdapterSpec(
         val projectName: String,
         val typeName: String,
-        val superType: SuperContainerSpec) : Serializable, TypeSpec {
+        val superType: SuperContainerSpec) : Serializable, Spec {
 
     override fun projectName() = projectName
     override fun typeName() = typeName

@@ -2,7 +2,7 @@ package software.onepiece.limits.spec
 
 import java.io.Serializable
 
-class SuperContainerSpec(val projectName: String, val typeName: String, val containedType: Spec) : Serializable, TypeSpec {
+class SuperContainerSpec(val projectName: String, val typeName: String, val containedType: Spec) : Spec {
     override fun projectName() = projectName
     override fun typeName() = typeName
 

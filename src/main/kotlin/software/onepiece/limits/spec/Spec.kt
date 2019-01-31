@@ -1,6 +1,8 @@
 package software.onepiece.limits.spec
 
-interface Spec {
+import java.io.Serializable
+
+interface Spec : Serializable {
     fun projectName(): String
     fun typeName(): String
     fun generateEmpty(): String
