@@ -1,8 +1,6 @@
 package software.onepiece.limits.spec
 
-import java.io.Serializable
-
-class SpecReference(val typeName: String) : Spec, Serializable {
+class SpecReference(val typeName: String) : Spec {
     override fun generateEmpty(): String {
         throw RuntimeException("Spec reference needs to be resolved!")
     }

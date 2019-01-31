@@ -1,6 +1,5 @@
 package software.onepiece.limits.spec
 
-import org.gradle.kotlin.dsl.support.unzipTo
 import java.io.Serializable
 
 class ContainerSpec(
@@ -12,7 +11,7 @@ class ContainerSpec(
         val containedSubTypes: List<Spec> = emptyList(),
         val superType: SuperContainerSpec? = null,
         var attributes: List<Spec> = emptyList(),
-        val recursionDepth: Int = 3) : Serializable, TypeSpec {
+        val recursionDepth: Int = 3) : Spec {
 
     override fun projectName() = projectName
     override fun typeName() = typeName
@@ -66,7 +65,7 @@ class ContainerSpec(
             ${containedSubTypes.joinToString(separator = "\n            ") { generateIndexIterator(it.typeName()) }}
             ${generateLoopIterator()}
         }
-        """.trimIndent().also { printNode(buildTypeGraph("", this, recursionDepth), "") }
+        """.trimIndent() //.also { printNode(buildTypeGraph("", this, recursionDepth), "") }
 
     private fun printNode(n: Node, indent: String) {
         println(indent + n.current.typeName)
