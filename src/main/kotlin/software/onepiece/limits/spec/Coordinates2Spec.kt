@@ -2,7 +2,7 @@ package software.onepiece.limits.spec
 
 import java.io.Serializable
 
-data class Coordinates2Spec(val projectName: String, val typeName: String, val xType: CoordinateSpec, val yType: CoordinateSpec) : Serializable, CoordinatesSpec {
+class Coordinates2Spec(val projectName: String, val typeName: String, val xType: CoordinateSpec, val yType: CoordinateSpec) : Serializable, CoordinatesSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateSizeFields() = "const val width = ${xType.limit}; const val height = ${yType.limit}"
