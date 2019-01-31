@@ -146,41 +146,41 @@ class ContainerSpec(
         """ else ""
 
     private fun generateImports(basePackageName: String) =
-            (collectChildTypes(buildTypeGraph("", this, 1)).distinct().map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + containedSubTypes.map { it.projectName() } + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
+            (collectChildTypes(buildTypeGraph("", this, false, false, 1)).distinct().map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + containedSubTypes.map { it.projectName() } + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
     private fun collectChildTypes(node: Node): List<ContainerSpec> = listOf(node.current) + node.children.map { collectChildTypes(it) }.flatten()
 
 
-    private fun generateCopyFunctions() = visitGraph(buildTypeGraph("", this, recursionDepth), emptyList())
+    private fun generateCopyFunctions() = visitGraph(buildTypeGraph("", this), emptyList())
 
     private fun visitGraph(node: Node, parents: List<Node>): String {
         var result = ""
-        if (!parents.isEmpty() && node.current.containedType !is SuperContainerSpec) {
+        if (!parents.isEmpty()) {
             val accessName = if (parents.size > 1) parents[1].access else node.access
-            val isAccessThroughAttribute = parents[0].current.attributes.any { it.typeName() == accessName }
+            val isAccessThroughAttribute = if (parents.size > 1) parents[1].isAttribute else node.isAttribute
 
             val accessCode = if (accessName != "") if (isAccessThroughAttribute) accessName.decapitalize() else "${parents[0].current.coordinatesType.propertyName()}, ${accessName.decapitalize()}s[${parents[0].current.coordinatesType.propertyName()}]" else "${parents[0].current.coordinatesType.propertyName()}, this[${parents[0].current.coordinatesType.propertyName()}]"
 
-            var p = parents.subList(1, parents.size)
-            var go = true
-            while(go) {
-                go = false
-                if (p.size > 1) {
-                    for (i in 1 until p.size) {
-                        // nested through attribute
-                        if (p[i - 1].current.attributes.any { it.typeName() == p[i].access }) {
-                            p = p.subList(0, i - 1) + p.subList(i, p.size)
-                            go = true
-                            break
-                        }
-                    }
+            val p = parents.subList(1, parents.size).toMutableList()
+            val toRemove = mutableListOf<Int>()
+            for (i in 1 until p.size) {
+                // nested through attribute
+                if (p[i].isAttribute) {
+                    toRemove.add(0, i -1)
                 }
+            }
+            if (node.isAttribute && p.isNotEmpty()) {
+                toRemove.add(0, p.lastIndex)
+            }
+            toRemove.forEach { i ->
+                p.removeAt(i)
             }
 
             val requiredCoordinates = if (isAccessThroughAttribute) p else listOf(parents[0]) + p
 
             with(node.current) {
-                result += """
+                if (node.current.containedType !is SuperContainerSpec) {
+                    result += """
             fun with${containedType.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
                     "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
                 }}${coordinatesType.propertyName(node.recursion)}: ${coordinatesType.typeName()}, ${containedType.propertyName(node.recursion)}: ${containedType.typeName()}) =
@@ -195,7 +195,20 @@ class ContainerSpec(
                     "${it.current.coordinatesType.propertyName(it.recursion)}, "
                 }}${coordinatesType.propertyName(node.recursion)}))
             """
+                }
+                if (!node.isSubtype) {
+                    result += attributes.joinToString(separator = "\n            ") { att ->
+                    """fun with${att.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
+                        "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
+                    }}${att.propertyName()}: ${att.typeName()}) =
+                with${if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()}($accessCode.with${att.propertyName().capitalize()}(${p.joinToString(separator = "") {
+                        "${it.current.coordinatesType.propertyName(it.recursion)}, "
+                    }}${att.propertyName()}))
+                """
+                    }
+                }
             }
+
         }
         node.children.forEach { nextChild ->
             result += visitGraph(nextChild, parents + node)
@@ -203,18 +216,18 @@ class ContainerSpec(
         return result
     }
 
-    private fun buildTypeGraph(access: String, spec: ContainerSpec, depth: Int, recursionCounter: Map<ContainerSpec, Int> = emptyMap()): Node {
-        return Node(access, spec, recursionCounter.getOrDefault(spec, 0), emptyList<Node>()
+    private fun buildTypeGraph(access: String, spec: ContainerSpec, isSubtype: Boolean = false, isAttribute: Boolean = false, depth: Int = recursionDepth, recursionCounter: Map<ContainerSpec, Int> = emptyMap()): Node {
+        return Node(access, spec, isSubtype, isAttribute, recursionCounter.getOrDefault(spec, 0), emptyList<Node>()
                 + if (spec.containedType is ContainerSpec && recursionCounter.getOrDefault(spec.containedType, 0) < depth && spec.containedLocation == null && spec.containedSubTypes.isEmpty()) {
-                        listOf(buildTypeGraph("", spec.containedType, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)))
+                        listOf(buildTypeGraph("", spec.containedType, false, false, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)))
                     } else {
                         emptyList()
                     }
-                + spec.containedSubTypes.filter { it is ContainerSpec && recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it as ContainerSpec, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
-                + spec.attributes.filter { it is ContainerSpec && recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it as ContainerSpec, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
+                + spec.containedSubTypes.filter { it is ContainerSpec && recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it as ContainerSpec, true, false, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
+                + spec.attributes.filter { it is ContainerSpec && recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it as ContainerSpec, false, true, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
         )
     }
 
-    private data class Node(val access: String, val current: ContainerSpec, val recursion: Int, val children: List<Node> = emptyList())
+    private data class Node(val access: String, val current: ContainerSpec, val isSubtype: Boolean, val isAttribute: Boolean, val recursion: Int, val children: List<Node> = emptyList())
 
 }
