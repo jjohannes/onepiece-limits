@@ -1,4 +1,3 @@
 package software.onepiece.limits.spec
 
-interface TypeSpec : Spec {
-}
+interface TypeSpec : Spec

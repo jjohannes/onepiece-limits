@@ -17,13 +17,12 @@ class LimitsPlugin: Plugin<Project> {
 
         project.afterEvaluate {
             val collectedSpecs = extension.specs.map { spec -> collectSpecs(spec) }.flatten().distinct()
-            val allSpecs = collectedSpecs.map {
-                if (it is ContainerSpec) {
-                    it.copy(attributes = it.attributes.map { ref -> if (ref is SpecReference) collectedSpecs.find { it.typeName() == ref.typeName }!! else ref })
-                } else {
-                    it
+            collectedSpecs.forEach { spec ->
+                if (spec is ContainerSpec) {
+                    spec.attributes = spec.attributes.map { ref -> if (ref is SpecReference) collectedSpecs.find { it.typeName() == ref.typeName }!! else ref }
                 }
-            }.groupBy { it.projectName() }
+            }
+            val allSpecs = collectedSpecs.groupBy { it.projectName() }
 
             allSpecs.forEach { projectName, specs ->
                 val sub = project.findProject(":$projectName") ?:
@@ -56,7 +55,7 @@ class LimitsPlugin: Plugin<Project> {
                             val projectDependency = sub.dependencies.project(":${spec.coordinatesType.projectName()}")
                             sub.dependencies.add("compile", projectDependency)
                         }
-                        spec.additionalContainedTypes.forEach {
+                        spec.containedSubTypes.forEach {
                             if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
                                 val projectDependency = sub.dependencies.project(":${it.projectName()}")
                                 sub.dependencies.add("compile", projectDependency)
@@ -86,8 +85,9 @@ class LimitsPlugin: Plugin<Project> {
             when(spec) {
                 is CoordinateSpec -> setOf(spec)
                 is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
-                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + spec.additionalContainedTypes.map { collectSpecs(it) }.flatten() + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedLocation) + spec.attributes.map { collectSpecs(it) }.flatten()
+                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + spec.containedSubTypes.map { collectSpecs(it) }.flatten() + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedLocation) + spec.attributes.map { collectSpecs(it) }.flatten()
                 is SuperContainerSpec -> setOf(spec)
+                is AdapterSpec -> setOf(spec)
                 is ChainOfCoordinates -> setOf(spec) + spec.components
                 else -> setOf()
             }
