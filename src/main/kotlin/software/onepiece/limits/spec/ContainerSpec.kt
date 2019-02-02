@@ -182,28 +182,37 @@ class ContainerSpec(
     private fun visitGraph(node: Node, parents: List<Node>, asCommands: Boolean): String {
         var result = ""
         var commandResult = ""
+
+        val isAccessThroughAttribute = if (parents.size > 1) parents[1].isAttribute else node.isAttribute
+
+        val p = if (parents.isEmpty()) emptyList() else parents.subList(1, parents.size).toMutableList()
+        val toRemove = mutableListOf<Int>()
+        for (i in 1 until p.size) {
+            // nested through attribute
+            if (p[i].isAttribute) {
+                toRemove.add(0, i -1)
+            }
+        }
+        if (node.isAttribute && p.isNotEmpty()) {
+            toRemove.add(0, p.lastIndex)
+        }
+        toRemove.forEach { i ->
+            p.removeAt(i)
+        }
+        val requiredCoordinates = if (isAccessThroughAttribute || parents.isEmpty()) p else listOf(parents[0]) + p
+
         if (!parents.isEmpty()) {
             val accessName = if (parents.size > 1) parents[1].access else node.access
-            val isAccessThroughAttribute = if (parents.size > 1) parents[1].isAttribute else node.isAttribute
-
-            val accessCode = if (accessName != "") if (isAccessThroughAttribute) accessName.decapitalize() else "${parents[0].current.coordinatesType.propertyName()}, ${accessName.decapitalize()}s[${parents[0].current.coordinatesType.propertyName()}]" else "${parents[0].current.coordinatesType.propertyName()}, this[${parents[0].current.coordinatesType.propertyName()}]"
-
-            val p = parents.subList(1, parents.size).toMutableList()
-            val toRemove = mutableListOf<Int>()
-            for (i in 1 until p.size) {
-                // nested through attribute
-                if (p[i].isAttribute) {
-                    toRemove.add(0, i -1)
+            val accessCode = if (accessName != "") {
+                if (isAccessThroughAttribute) {
+                    accessName.decapitalize()
+                } else {
+                    // sub-type access
+                    "${parents[0].current.coordinatesType.propertyName()}, ${accessName.decapitalize()}s[${parents[0].current.coordinatesType.propertyName()}]"
                 }
+            } else {
+                "${parents[0].current.coordinatesType.propertyName()}, this[${parents[0].current.coordinatesType.propertyName()}]"
             }
-            if (node.isAttribute && p.isNotEmpty()) {
-                toRemove.add(0, p.lastIndex)
-            }
-            toRemove.forEach { i ->
-                p.removeAt(i)
-            }
-
-            val requiredCoordinates = if (isAccessThroughAttribute) p else listOf(parents[0]) + p
 
             with(node.current) {
                 if (node.current.containedType !is SuperContainerSpec) {
@@ -237,20 +246,21 @@ class ContainerSpec(
                 }
             }
 
-            if (asCommands && node.current.containedType !is ContainerSpec && node.current.containedType !is SuperContainerSpec) {
-                val propertyName = node.current.containedType.propertyName().capitalize() //containedType.propertyName().capitalize()
-                commandResult += generateCommand(propertyName, "with",
-                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0))
-                commandResult += generateCommand(propertyName, "without",
-                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion))
-            }
-            if (asCommands && !node.isSubtype) {
-                node.current.attributes.filter { it !is ContainerSpec }.forEach { attribute ->
-                    commandResult += generateCommand(attribute.propertyName().capitalize(), "with",
-                            requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (attribute to 0))
-                }
+        }
+        if (asCommands && node.current.containedType !is ContainerSpec && node.current.containedType !is SuperContainerSpec) {
+            val propertyName = node.current.containedType.propertyName().capitalize() //containedType.propertyName().capitalize()
+            commandResult += generateCommand(propertyName, "with",
+                    requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0))
+            commandResult += generateCommand(propertyName, "without",
+                    requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion))
+        }
+        if (asCommands && !node.isSubtype) {
+            node.current.attributes.filter { it !is ContainerSpec }.forEach { attribute ->
+                commandResult += generateCommand(attribute.propertyName().capitalize(), "with",
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (attribute to 0))
             }
         }
+
         node.children.forEach { nextChild ->
             if (asCommands) {
                 commandResult += visitGraph(nextChild, parents + node, asCommands)
