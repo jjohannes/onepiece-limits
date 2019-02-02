@@ -1,7 +1,5 @@
 package software.onepiece.limits.spec
 
-import java.io.Serializable
-
 class CoordinateSpec(val projectName: String, val limit: Int, val typeName: String, val literalPrefix: String) : CoordinatesSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
@@ -26,10 +24,14 @@ class CoordinateSpec(val projectName: String, val limit: Int, val typeName: Stri
                     return values()[unlimitedInt]
                 }
 
+                fun of(string: String) = of(string.toInt())
+
                 val zero = ${literalPrefix}0
 
                 fun saveValue(ordinal: Int) = values()[Math.max(0, Math.min(${limit - 1}, ordinal))]
             }
+
+            override fun toString() = ordinal.toString()
 
             operator fun plus(other: $typeName) = saveValue(ordinal + other.ordinal)
 

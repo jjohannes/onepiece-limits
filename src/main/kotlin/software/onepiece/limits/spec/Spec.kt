@@ -8,4 +8,5 @@ interface Spec : Serializable {
     fun generateEmpty(): String
     fun propertyName(count: Int = 0) = typeName().decapitalize() + if (count == 0) "" else count.toString()
     fun generate(packageName: String) = ""
+    fun generateCommandFactory(packageName: String) = ""
 }
