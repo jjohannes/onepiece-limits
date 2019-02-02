@@ -26,10 +26,14 @@ class Coordinates2Spec(val projectName: String, val typeName: String, val xType:
 
                 fun of(x: Int, y: Int) = of(x.to${xType.typeName}(), y.to${yType.typeName}())
 
+                fun of(string: String) = of(string.substring(1, 3).toInt(), string.substring(4, 6).toInt())
+
                 val zero = of(${xType.typeName}.${xType.literalPrefix}0, ${yType.typeName}.${yType.literalPrefix}0)
 
                 val values: Iterable<$typeName> = AllIterable
             }
+
+            override fun toString() = "x${'$'}{x.toString().padStart(2, '0')}y${'$'}{y.toString().padStart(2, '0')}"
 
             private object AllIterable: Iterable<$typeName> {
                 override fun iterator() = AllIterator()

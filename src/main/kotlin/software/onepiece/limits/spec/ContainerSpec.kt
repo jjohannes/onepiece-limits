@@ -1,7 +1,5 @@
 package software.onepiece.limits.spec
 
-import java.io.Serializable
-
 class ContainerSpec(
         val projectName: String,
         val typeName: String,
@@ -11,11 +9,38 @@ class ContainerSpec(
         val containedSubTypes: List<Spec> = emptyList(),
         val superType: SuperContainerSpec? = null,
         var attributes: List<Spec> = emptyList(),
+        val root: Boolean = false,
         val recursionDepth: Int = 3) : Spec {
 
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "${typeName()}.empty"
+
+    private var commandCounter = 0
+    private var jsonParseCode = mutableListOf<String>()
+
+    override fun generateCommandFactory(packageName: String) = if (root) """
+        package $packageName.entities.$projectName
+
+        ${generateImports(packageName)}
+
+        object ${typeName}Commands {
+
+            interface Command {
+                fun apply(target: $typeName)
+                fun toJson() : String
+            }
+            ${generateCommandFunctions()}
+            fun fromJson(json: String) : Command {
+                val entries = json.replace("{", "").replace("}", "").replace("\"", "").split(",").map { it.split("=").let { entry -> entry[0].trim() to entry[1].trim() } }.toMap()
+                return when(entries.getValue("command").toInt()) {
+                    ${jsonParseCode.joinToString("\n                    ")}
+                    else -> throw RuntimeException("command type not known")
+                }
+            }
+
+        }
+    """.trimIndent() else ""
 
     override fun generate(packageName: String) = """
         package $packageName.entities.$projectName
@@ -151,10 +176,12 @@ class ContainerSpec(
     private fun collectChildTypes(node: Node): List<ContainerSpec> = listOf(node.current) + node.children.map { collectChildTypes(it) }.flatten()
 
 
-    private fun generateCopyFunctions() = visitGraph(buildTypeGraph("", this), emptyList())
+    private fun generateCopyFunctions() = visitGraph(buildTypeGraph("", this), emptyList(), false)
+    private fun generateCommandFunctions() = visitGraph(buildTypeGraph("", this), emptyList(), true)
 
-    private fun visitGraph(node: Node, parents: List<Node>): String {
+    private fun visitGraph(node: Node, parents: List<Node>, asCommands: Boolean): String {
         var result = ""
+        var commandResult = ""
         if (!parents.isEmpty()) {
             val accessName = if (parents.size > 1) parents[1].access else node.access
             val isAccessThroughAttribute = if (parents.size > 1) parents[1].isAttribute else node.isAttribute
@@ -182,38 +209,73 @@ class ContainerSpec(
                 if (node.current.containedType !is SuperContainerSpec) {
                     result += """
             fun with${containedType.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
-                    "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
-                }}${coordinatesType.propertyName(node.recursion)}: ${coordinatesType.typeName()}, ${containedType.propertyName(node.recursion)}: ${containedType.typeName()}) =
+                        "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
+                    }}${coordinatesType.propertyName(node.recursion)}: ${coordinatesType.typeName()}, ${containedType.propertyName(node.recursion)}: ${containedType.typeName()}) =
                 with${if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()}($accessCode.with${containedType.propertyName().capitalize()}(${p.joinToString(separator = "") {
-                    "${it.current.coordinatesType.propertyName(it.recursion)}, "
-                }}${coordinatesType.propertyName(node.recursion)}, ${containedType.propertyName(node.recursion)}))
+                        "${it.current.coordinatesType.propertyName(it.recursion)}, "
+                    }}${coordinatesType.propertyName(node.recursion)}, ${containedType.propertyName(node.recursion)}))
 
             fun without${containedType.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
-                    "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
-                }}${coordinatesType.propertyName(node.recursion)}: ${coordinatesType.typeName()}) =
+                        "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
+                    }}${coordinatesType.propertyName(node.recursion)}: ${coordinatesType.typeName()}) =
                 with${if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()}($accessCode.without${containedType.propertyName().capitalize()}(${p.joinToString(separator = "") {
-                    "${it.current.coordinatesType.propertyName(it.recursion)}, "
-                }}${coordinatesType.propertyName(node.recursion)}))
+                        "${it.current.coordinatesType.propertyName(it.recursion)}, "
+                    }}${coordinatesType.propertyName(node.recursion)}))
             """
                 }
                 if (!node.isSubtype) {
                     result += attributes.joinToString(separator = "\n            ") { att ->
-                    """fun with${att.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
-                        "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
-                    }}${att.propertyName()}: ${att.typeName()}) =
+                        """
+            fun with${att.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
+                            "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
+                        }}${att.propertyName()}: ${att.typeName()}) =
                 with${if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()}($accessCode.with${att.propertyName().capitalize()}(${p.joinToString(separator = "") {
-                        "${it.current.coordinatesType.propertyName(it.recursion)}, "
-                    }}${att.propertyName()}))
+                            "${it.current.coordinatesType.propertyName(it.recursion)}, "
+                        }}${att.propertyName()}))
                 """
                     }
                 }
             }
 
+            if (asCommands && node.current.containedType !is ContainerSpec && node.current.containedType !is SuperContainerSpec) {
+                val propertyName = node.current.containedType.propertyName().capitalize() //containedType.propertyName().capitalize()
+                commandResult += generateCommand(propertyName, "with",
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0))
+                commandResult += generateCommand(propertyName, "without",
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion))
+            }
+            if (asCommands && !node.isSubtype) {
+                node.current.attributes.filter { it !is ContainerSpec }.forEach { attribute ->
+                    commandResult += generateCommand(attribute.propertyName().capitalize(), "with",
+                            requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (attribute to 0))
+                }
+            }
         }
         node.children.forEach { nextChild ->
-            result += visitGraph(nextChild, parents + node)
+            if (asCommands) {
+                commandResult += visitGraph(nextChild, parents + node, asCommands)
+            } else {
+                result += visitGraph(nextChild, parents + node, asCommands)
+            }
         }
-        return result
+        return if (asCommands) commandResult else result
+    }
+
+    private
+    fun generateCommand(propertyName: String, kind: String, coordinates: List<Pair<Spec, Int>>) = """
+            private data class Command$commandCounter(${coordinates.joinToString(separator = ", ") { "val ${it.first.propertyName(it.second)}: ${it.first.typeName()}" }}) : Command {
+                override fun apply(target: $typeName) {
+                    target.$kind$propertyName(${coordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }})
+                }
+                override fun toJson() =
+                    ""${'"'}{ "command" = $commandCounter, ${coordinates.joinToString(separator = ", ") { """"${it.first.propertyName(it.second)}" = "${'$'}${it.first.propertyName(it.second)}"""" }} }""${'"'}
+            }
+
+            fun $kind$propertyName(${coordinates.joinToString(separator = ", ") { "${it.first.propertyName(it.second)}: ${it.first.typeName()}"}}) : Command =
+                Command$commandCounter(${coordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }})
+    """.also {
+        jsonParseCode.add("$commandCounter -> $kind$propertyName(${coordinates.joinToString(separator = ", ") { if (it.first is NativePrimitiveSpec) """entries.getValue("${it.first.propertyName(it.second)}").to${it.first.typeName()}()""" else """${it.first.typeName()}.of(entries.getValue("${it.first.propertyName(it.second)}"))""" }})")
+        commandCounter++
     }
 
     private fun buildTypeGraph(access: String, spec: ContainerSpec, isSubtype: Boolean = false, isAttribute: Boolean = false, depth: Int = recursionDepth, recursionCounter: Map<ContainerSpec, Int> = emptyMap()): Node {
