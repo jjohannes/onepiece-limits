@@ -47,7 +47,7 @@ class ContainerSpec(
 
         ${generateImports(packageName)}
 
-        data class $typeName(private val map: Map<${coordinatesType.typeName()}, Any> = mapOf()${
+        data class $typeName private constructor(private val map: Map<${coordinatesType.typeName()}, Any> = mapOf()${
             attributes.joinToString(separator = "") { ", val ${it.propertyName()}: ${it.typeName()} = ${it.generateEmpty()}" }
         }): ${if (superType != null) "${superType.typeName()}, " else "" }Iterable<${coordinatesType.typeName()}> {
 
@@ -59,8 +59,8 @@ class ContainerSpec(
             ${if(superType != null) """
             override fun get(x: Int, y: Int, container: Any) = get(${coordinatesType.typeName()}.of(x${if (coordinatesType is Coordinates2Spec) ", y" else ""})${if (containedLocation != null) ", container as ${containedLocation.rootContainer}" else ""})
 
-            override fun xMax() = ${(coordinatesType as? Coordinates2Spec)?.xType?.limit ?: (coordinatesType as CoordinateSpec).limit}
-            override fun yMax() = ${(coordinatesType as? Coordinates2Spec)?.yType?.limit ?: 1}
+            override fun xMax() = ${(coordinatesType as? Coordinates2Spec)?.xType?.limit?: (coordinatesType as CoordinateSpec).limit}
+            override fun yMax() = ${(coordinatesType as? Coordinates2Spec)?.yType?.limit?: 1}
             """ else ""}
             override fun iterator(): Iterator<${coordinatesType.typeName()}> = IndexIterator${containedType.typeName()}(map)
 
@@ -214,41 +214,26 @@ class ContainerSpec(
                 "${parents[0].current.coordinatesType.propertyName()}, this[${parents[0].current.coordinatesType.propertyName()}]"
             }
 
-            with(node.current) {
-                if (node.current.containedType !is SuperContainerSpec) {
-                    result += """
-            fun with${containedType.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
-                        "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
-                    }}${coordinatesType.propertyName(node.recursion)}: ${coordinatesType.typeName()}, ${containedType.propertyName(node.recursion)}: ${containedType.typeName()}) =
-                with${if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()}($accessCode.with${containedType.propertyName().capitalize()}(${p.joinToString(separator = "") {
-                        "${it.current.coordinatesType.propertyName(it.recursion)}, "
-                    }}${coordinatesType.propertyName(node.recursion)}, ${containedType.propertyName(node.recursion)}))
-
-            fun without${containedType.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
-                        "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
-                    }}${coordinatesType.propertyName(node.recursion)}: ${coordinatesType.typeName()}) =
-                with${if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()}($accessCode.without${containedType.propertyName().capitalize()}(${p.joinToString(separator = "") {
-                        "${it.current.coordinatesType.propertyName(it.recursion)}, "
-                    }}${coordinatesType.propertyName(node.recursion)}))
-            """
-                }
-                if (!node.isSubtype) {
-                    result += attributes.joinToString(separator = "\n            ") { att ->
-                        """
-            fun with${att.propertyName().capitalize()}(${requiredCoordinates.joinToString(separator = "") {
-                            "${it.current.coordinatesType.propertyName(it.recursion)}: ${it.current.coordinatesType.typeName()}, "
-                        }}${att.propertyName()}: ${att.typeName()}) =
-                with${if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()}($accessCode.with${att.propertyName().capitalize()}(${p.joinToString(separator = "") {
-                            "${it.current.coordinatesType.propertyName(it.recursion)}, "
-                        }}${att.propertyName()}))
-                """
-                    }
+            val childPropertyName = if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()
+            if (node.current.containedType !is SuperContainerSpec) {
+                val propertyName = node.current.containedType.propertyName().capitalize()
+                result += generateModifyFunction(propertyName, "with", childPropertyName, accessCode,
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0),
+                        p.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0))
+                result += generateModifyFunction(propertyName, "without", childPropertyName, accessCode,
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion),
+                        p.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion))
+            }
+            if (!node.isSubtype) {
+                node.current.attributes.filter { it !is ContainerSpec }.forEach { attribute ->
+                    result += generateModifyFunction(attribute.propertyName().capitalize(), "with", childPropertyName, accessCode,
+                            requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (attribute to 0),
+                            p.map { it.current.coordinatesType to it.recursion } + (attribute to 0))
                 }
             }
-
         }
         if (asCommands && node.current.containedType !is ContainerSpec && node.current.containedType !is SuperContainerSpec) {
-            val propertyName = node.current.containedType.propertyName().capitalize() //containedType.propertyName().capitalize()
+            val propertyName = node.current.containedType.propertyName().capitalize()
             commandResult += generateCommand(propertyName, "with",
                     requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0))
             commandResult += generateCommand(propertyName, "without",
@@ -271,21 +256,49 @@ class ContainerSpec(
         return if (asCommands) commandResult else result
     }
 
-    private
-    fun generateCommand(propertyName: String, kind: String, coordinates: List<Pair<Spec, Int>>) = """
-            private data class Command$commandCounter(${coordinates.joinToString(separator = ", ") { "val ${it.first.propertyName(it.second)}: ${it.first.typeName()}" }}) : Command {
-                override fun apply(target: $typeName) {
-                    target.$kind$propertyName(${coordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }})
-                }
-                override fun toJson() =
-                    ""${'"'}{ "command" = $commandCounter, ${coordinates.joinToString(separator = ", ") { """"${it.first.propertyName(it.second)}" = "${'$'}${it.first.propertyName(it.second)}"""" }} }""${'"'}
-            }
 
-            fun $kind$propertyName(${coordinates.joinToString(separator = ", ") { "${it.first.propertyName(it.second)}: ${it.first.typeName()}"}}) : Command =
-                Command$commandCounter(${coordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }})
-    """.also {
-        jsonParseCode.add("$commandCounter -> $kind$propertyName(${coordinates.joinToString(separator = ", ") { if (it.first is NativePrimitiveSpec) """entries.getValue("${it.first.propertyName(it.second)}").to${it.first.typeName()}()""" else """${it.first.typeName()}.of(entries.getValue("${it.first.propertyName(it.second)}"))""" }})")
-        commandCounter++
+    private
+    fun generateModifyFunction(propertyName: String, kind: String, childPropertyName: String, accessCode: String,
+                               coordinates: List<Pair<Spec, Int>>, argCoordinates: List<Pair<Spec, Int>>): String {
+        val paramListFunction =
+                coordinates.joinToString(separator = ", ") { "${it.first.propertyName(it.second)}: ${it.first.typeName()}" }
+        val argumentListFunction =
+                argCoordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }
+
+        return """
+            fun $kind$propertyName($paramListFunction) =
+                with$childPropertyName($accessCode.$kind$propertyName($argumentListFunction))
+        """
+    }
+
+    private
+    fun generateCommand(propertyName: String, kind: String, coordinates: List<Pair<Spec, Int>>): String {
+        val paramListConstructor =
+                coordinates.joinToString(separator = ", ") { "val ${it.first.propertyName(it.second)}: ${it.first.typeName()}" }
+        val paramListFunction =
+                coordinates.joinToString(separator = ", ") { "${it.first.propertyName(it.second)}: ${it.first.typeName()}" }
+        val argumentListFunction =
+                coordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }
+        val argumentListJson =
+                coordinates.joinToString(separator = ", ") { """"${it.first.propertyName(it.second)}" = "${'$'}${it.first.propertyName(it.second)}"""" }
+        val argumentListFunctionFromString =
+                coordinates.joinToString(separator = ", ") { if (it.first is NativePrimitiveSpec) """entries.getValue("${it.first.propertyName(it.second)}").to${it.first.typeName()}()""" else """${it.first.typeName()}.of(entries.getValue("${it.first.propertyName(it.second)}"))""" }
+
+        return """
+                private data class Command$commandCounter($paramListConstructor) : Command {
+                    override fun apply(target: $typeName) {
+                        target.$kind$propertyName($argumentListFunction)
+                    }
+                    override fun toJson() =
+                        ""${'"'}{ "command" = $commandCounter, $argumentListJson }""${'"'}
+                }
+
+                fun $kind$propertyName($paramListFunction) : Command =
+                    Command$commandCounter($argumentListFunction)
+        """.also {
+            jsonParseCode.add("$commandCounter -> $kind$propertyName($argumentListFunctionFromString)")
+            commandCounter++
+        }
     }
 
     private fun buildTypeGraph(access: String, spec: ContainerSpec, isSubtype: Boolean = false, isAttribute: Boolean = false, depth: Int = recursionDepth, recursionCounter: Map<ContainerSpec, Int> = emptyMap()): Node {
