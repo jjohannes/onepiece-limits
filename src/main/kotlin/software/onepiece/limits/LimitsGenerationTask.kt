@@ -36,6 +36,13 @@ open class LimitsGenerationTask : DefaultTask() {
                     it.print(commandFactoryContent)
                 }
             }
+
+            val diffToolContent = spec.generateDiffTool(packageName)
+            if (diffToolContent.isNotBlank()) {
+                File(targetFolder, "${spec.typeName()}DiffTool.kt").printWriter().use {
+                    it.print(diffToolContent)
+                }
+            }
         }
     }
 
