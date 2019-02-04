@@ -9,10 +9,6 @@ class SuperContainerSpec(val projectName: String, val typeName: String, val cont
     override fun generate(packageName: String) = """
         package $packageName.entities.$projectName
 
-        interface $typeName {
-            operator fun get(x: Int, y: Int, container: Any): ${containedType.typeName()}
-            fun xMax(): Int
-            fun yMax(): Int
-        }
+        interface $typeName
     """.trimIndent()
 }

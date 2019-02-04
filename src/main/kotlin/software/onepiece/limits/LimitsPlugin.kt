@@ -6,7 +6,9 @@ import org.gradle.api.internal.HasConvention
 import java.io.File
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.kotlin.dsl.project
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import software.onepiece.limits.spec.*
 
 
@@ -16,7 +18,7 @@ class LimitsPlugin: Plugin<Project> {
         val extension = project.extensions.create("limits", LimitsPluginExtension::class.java)
 
         project.afterEvaluate {
-            val collectedSpecs = extension.specs.map { spec -> collectSpecs(spec) }.flatten().distinct()
+            val collectedSpecs = extension.specs.map { spec -> collectSpecs(spec) }.flatten().distinct().filter { it != NullSpec }
             collectedSpecs.forEach { spec ->
                 if (spec is ContainerSpec) {
                     spec.attributes = spec.attributes.map { ref -> if (ref is SpecReference) collectedSpecs.find { it.typeName() == ref.typeName }!! else ref }
@@ -44,7 +46,10 @@ class LimitsPlugin: Plugin<Project> {
                     out = generatedSrcFolder
                 }
 
-                sub.tasks.findByName("compileKotlin")!!.dependsOn(generationTask)
+                sub.tasks.withType(KotlinCompile::class) {
+                    dependsOn(generationTask)
+                    // kotlinOptions.jvmTarget = "1.8"
+                }
                 specs.forEach { spec ->
                     if (spec is ContainerSpec) {
                         if (spec.containedType.projectName() != spec.projectName && !spec.containedType.projectName().isEmpty()) {
@@ -67,13 +72,6 @@ class LimitsPlugin: Plugin<Project> {
                                 sub.dependencies.add("compile", projectDependency)
                             }
                         }
-                    } else if (spec is ChainOfCoordinates) {
-                        spec.components.forEach {
-                            if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
-                                val projectDependency = sub.dependencies.project(":${it.projectName()}")
-                                sub.dependencies.add("compile", projectDependency)
-                            }
-                        }
                     }
                 }
 
@@ -85,10 +83,8 @@ class LimitsPlugin: Plugin<Project> {
             when(spec) {
                 is CoordinateSpec -> setOf(spec)
                 is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
-                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + spec.containedSubTypes.map { collectSpecs(it) }.flatten() + collectSpecs(spec.coordinatesType) + collectSpecs(spec.containedLocation) + spec.attributes.map { collectSpecs(it) }.flatten()
+                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + spec.containedSubTypes.map { collectSpecs(it) }.flatten() + collectSpecs(spec.coordinatesType) + spec.attributes.map { collectSpecs(it) }.flatten()
                 is SuperContainerSpec -> setOf(spec)
-                is AdapterSpec -> setOf(spec) + spec.attributes.map { collectSpecs(it) }.flatten()
-                is ChainOfCoordinates -> setOf(spec) + spec.components
                 else -> setOf()
             }
 }
