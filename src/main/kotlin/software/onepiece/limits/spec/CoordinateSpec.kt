@@ -31,7 +31,7 @@ class CoordinateSpec(val projectName: String, val limit: Int, val typeName: Stri
                 fun saveValue(ordinal: Int) = values()[Math.max(0, Math.min(${limit - 1}, ordinal))]
             }
 
-            override fun toString() = ordinal.toString()
+            override fun toString() = ordinal.toString().padStart(2, '0')
 
             operator fun plus(other: $typeName) = saveValue(ordinal + other.ordinal)
 
@@ -40,6 +40,8 @@ class CoordinateSpec(val projectName: String, val limit: Int, val typeName: Stri
             operator fun times(other: $typeName) = saveValue(ordinal * other.ordinal)
 
             operator fun div(other: $typeName) = saveValue(ordinal / other.ordinal)
+
+            fun dataHash() = ordinal
         }
 
         fun Int.to$typeName() = $typeName.saveValue(this)

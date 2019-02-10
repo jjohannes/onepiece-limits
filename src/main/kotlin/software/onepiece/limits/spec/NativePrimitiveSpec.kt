@@ -5,8 +5,9 @@ class NativePrimitiveSpec(val name: String, val typeName: String, val emptyValue
     override fun generateIndexIteratorEntry() = ""
     override fun generateSizeFields() = ""
     override fun projectName() = ""
-    override fun propertyName(count: Int) = name
+    override fun propertyName(count: Int) = name.decapitalize()
 
     override fun typeName() = typeName
     override fun generateEmpty() = emptyValue
+    override fun dataHashCall() = ".hashCode()"
 }
