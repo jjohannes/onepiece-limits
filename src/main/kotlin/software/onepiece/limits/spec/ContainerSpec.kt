@@ -9,7 +9,7 @@ class ContainerSpec(
         val superType: SuperContainerSpec? = null,
         var attributes: List<Spec> = emptyList(),
         val root: Boolean = false,
-        val recursionDepth: Int = 2) : Spec {
+        val recursionDepth: Int = 3) : Spec {
 
     override fun projectName() = projectName
     override fun typeName() = typeName
@@ -20,7 +20,8 @@ class ContainerSpec(
     fun containedSubTypes() = containedSubTypes
 
     private var commandCounter = 0
-    private var jsonParseCode = mutableListOf<String>()
+    private val jsonParseCode = mutableListOf<String>()
+    private val visitorFunctionTypes = mutableSetOf<ContainerSpec>()
 
     override fun generateCommandFactory(packageName: String) = if (root) """
         package $packageName.entities.$projectName
@@ -30,7 +31,7 @@ class ContainerSpec(
         object ${typeName}Commands {
 
             interface Command {
-                fun apply(target: $typeName)
+                fun apply(target: $typeName): $typeName
                 fun toJson() : String
             }
             ${generateCommandFunctions()}
@@ -50,8 +51,13 @@ class ContainerSpec(
 
         ${generateImports(packageName)}
 
-        class ${typeName}DiffTool(val visitor: Any) {
+        class ${typeName}DiffTool(private val visitor: Visitor? = null) {
+
             ${generateDiffFunctions()}
+
+            interface Visitor {
+                ${visitorFunctionTypes.joinToString("\n                ") { "fun visit(current: ${it.typeName()}, previous: ${it.typeName()}, path: List<Any>)" }}
+            }
         }
     """.trimIndent() else ""
 
@@ -93,6 +99,7 @@ class ContainerSpec(
             ${generateCopyFunctions()}
             ${containedSubTypes.joinToString(separator = "\n            ") { generateAccess(it) }}
             ${containedSubTypes.joinToString(separator = "\n            ") { generateIndexIterator(it.typeName()) }}
+            ${if (superType != null) "override " else "" }fun dataHash() = ${dataHashCall((if (containedType == NullSpec) emptyList() else listOf("this.map { it${coordinatesType.dataHashCall()} xor this[it]${containedType.dataHashCall()} }.sum()")) + attributes.map { it.propertyName() + it.dataHashCall() })}
         }
         """.trimIndent() //.also { printNode(buildTypeGraph("", this, recursionDepth), "") }
 
@@ -102,6 +109,8 @@ class ContainerSpec(
             printNode(it, "$indent  ")
         }
     }
+
+    private fun dataHashCall(properties: List<String>): String =  if (properties.size == 1) properties.last() else "(${dataHashCall(properties - properties.last())}) * 31 + ${properties.last()}"
 
     private fun generateAccess(type: ContainerSpec) = """
             val ${type.propertyName()}s = ${type.typeName()}Access(map)
@@ -126,7 +135,7 @@ class ContainerSpec(
                         return false
                     }
                     val coordinates = ${coordinatesType.generateIndexIteratorEntry()}
-                    if (map[coordinates] != null) {
+                    if (map[coordinates] is $type) {
                         next = coordinates
                     }
                     idx++
@@ -294,16 +303,16 @@ class ContainerSpec(
                 coordinates.joinToString(separator = ", ") { if (it.first is NativePrimitiveSpec) """entries.getValue("${it.first.propertyName(it.second)}").to${it.first.typeName()}()""" else """${it.first.typeName()}.of(entries.getValue("${it.first.propertyName(it.second)}"))""" }
 
         return """
-                private data class Command$commandCounter($paramListConstructor) : Command {
-                    override fun apply(target: $typeName) {
-                        target.$kind$propertyName($argumentListFunction)
-                    }
-                    override fun toJson() =
-                        ""${'"'}{ "command" = $commandCounter, $argumentListJson }""${'"'}
-                }
+            private data class Command$commandCounter($paramListConstructor) : Command {
+                override fun apply(target: $typeName) =
+                    target.$kind$propertyName($argumentListFunction)
 
-                fun $kind$propertyName($paramListFunction) : Command =
-                    Command$commandCounter($argumentListFunction)
+                override fun toJson() =
+                    ""${'"'}{ "command" = $commandCounter, $argumentListJson }""${'"'}
+            }
+
+            fun $kind$propertyName($paramListFunction) : Command =
+                Command$commandCounter($argumentListFunction)
         """.also {
             jsonParseCode.add("$commandCounter -> $kind$propertyName($argumentListFunctionFromString)")
             commandCounter++
@@ -320,23 +329,20 @@ class ContainerSpec(
         val argumentListFunction =
                 coordinates.joinToString(separator = "") { "${it.first.propertyName(it.second)}, " }
 
-        return if (node.children.isEmpty()) /* end of recursion */ """
-            private fun diff(${paramListFunction}current: $propertyName, previous: $propertyName, commands: MutableList<${typeName}Commands.Command>) { }
-        """
-        else """
+        return """
             fun diff(${paramListFunction}current: $propertyName, previous: $propertyName, commands: MutableList<${typeName}Commands.Command>) {
                 if (current != previous) {
-                    // visitor.changed(${argumentListFunction}current, previous)
+                    visitor?.visit(current, previous, listOf(${argumentListFunction.substringBeforeLast(",").also { visitorFunctionTypes.add(current) }}))
                     ${current.attributes().filter { it !is ContainerSpec }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { commands.add(${typeName}Commands.with${it.propertyName().capitalize()}(${argumentListFunction}current.${it.propertyName()})) }" }}
                     ${current.attributes().filter { it is ContainerSpec  }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { diff(${argumentListFunction}current.${it.propertyName()}, previous.${it.propertyName()}, commands) }" }}
                     ${when {
-                        node.children.isEmpty() -> ""
-                        current.containedSubTypes().isEmpty() -> "current.forEach { diff(${argumentListFunction}it, current[it], previous[it], commands) }"
+                        node.children.isEmpty() && (current.containedType() is ContainerSpec || current.containedType() is SuperContainerSpec || current.containedType() == NullSpec) -> "" /* end of recursion */
+                        current.containedSubTypes().isEmpty() -> "current.union(previous).forEach { diff(${argumentListFunction}it, current[it], previous[it], commands) }"
                         else -> current.containedSubTypes().joinToString("\n                    ") { "current.${it.propertyName()}s.forEach { diff(${argumentListFunction}it, current.${it.propertyName()}s[it], previous.${it.propertyName()}s[it], commands) }" }
                     }}
                 }
             }
-        """ + if(current.containedType() is ContainerSpec || current.containedType() is SuperContainerSpec) "" else """
+        """ + if (current.containedType() is ContainerSpec || current.containedType() is SuperContainerSpec || current.containedType() is NullSpec) "" else """
             fun diff($paramListFunction${current.coordinatesType().propertyName(node.recursion)}: ${current.coordinatesType().typeName()}, current: ${current.containedType().typeName()}, previous: ${current.containedType().typeName()}, commands: MutableList<${typeName}Commands.Command>) {
                 if (current != previous) {
                     commands.add(${typeName}Commands.with${current.containedType().propertyName().capitalize()}($argumentListFunction${current.coordinatesType().propertyName(node.recursion)}, current))

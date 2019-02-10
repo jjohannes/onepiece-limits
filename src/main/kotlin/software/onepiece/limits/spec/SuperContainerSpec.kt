@@ -9,6 +9,8 @@ class SuperContainerSpec(val projectName: String, val typeName: String, val cont
     override fun generate(packageName: String) = """
         package $packageName.entities.$projectName
 
-        interface $typeName
+        interface $typeName {
+            fun dataHash() = hashCode()
+        }
     """.trimIndent()
 }

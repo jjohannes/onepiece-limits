@@ -1,13 +1,11 @@
 package software.onepiece.limits.spec
 
-import java.io.Serializable
-
 class Coordinates2Spec(val projectName: String, val typeName: String, val xType: CoordinateSpec, val yType: CoordinateSpec) : CoordinatesSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateSizeFields() = "const val width = ${xType.limit}; const val height = ${yType.limit}"
     override fun generateSizeFieldsSum() = "width * height"
-    override fun generateIndexIteratorEntry() = "$typeName.of(${xType.typeName}.of(idx - (idx / width) * width), ${yType.typeName}.of(idx / width))"
+    override fun generateIndexIteratorEntry() = "$typeName.of(idx - (idx / width) * width, idx / width)"
 
     override fun generate(packageName: String): String = """
         package $packageName.entities.$projectName
@@ -73,6 +71,8 @@ class Coordinates2Spec(val projectName: String, val typeName: String, val xType:
             operator fun plus(other: $typeName) = of(x + other.x, y + other.y)
 
             operator fun minus(other: $typeName) = of(x - other.x, y - other.y)
+
+            fun dataHash() = x${xType.dataHashCall()} * 31 + y${yType.dataHashCall()}
         }
         """.trimIndent()
 }

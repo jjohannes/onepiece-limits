@@ -10,4 +10,5 @@ interface Spec : Serializable {
     fun generate(packageName: String) = ""
     fun generateCommandFactory(packageName: String) = ""
     fun generateDiffTool(packageName: String) = ""
+    fun dataHashCall() = ".dataHash()"
 }
