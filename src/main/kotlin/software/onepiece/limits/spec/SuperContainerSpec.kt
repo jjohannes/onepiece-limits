@@ -5,7 +5,7 @@ class SuperContainerSpec(val projectName: String, val typeName: String, val cont
     override fun typeName() = typeName
 
     override fun generateEmpty() = "throw IllegalArgumentException()"
-
+    override fun emptyCheck() = ".isEmpty()"
     override fun generate(packageName: String) = """
         package $packageName.entities.$projectName
 

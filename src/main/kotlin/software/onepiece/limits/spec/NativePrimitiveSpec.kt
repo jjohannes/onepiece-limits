@@ -9,5 +9,6 @@ class NativePrimitiveSpec(val name: String, val typeName: String, val emptyValue
 
     override fun typeName() = typeName
     override fun generateEmpty() = emptyValue
+    override fun emptyCheck() = " == $emptyValue"
     override fun dataHashCall() = ".hashCode()"
 }

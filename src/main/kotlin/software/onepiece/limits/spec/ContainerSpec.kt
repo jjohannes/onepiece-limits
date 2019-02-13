@@ -14,6 +14,7 @@ class ContainerSpec(
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "${typeName()}.empty"
+    override fun emptyCheck() = ".isEmpty()"
     fun coordinatesType() = coordinatesType
     fun containedType() = containedType
     fun attributes() = attributes
@@ -83,13 +84,11 @@ class ContainerSpec(
 
             operator fun get(position: ${coordinatesType.typeName()}) = map.getOrElse(position) { ${containedType.generateEmpty()} }
 
-            fun with${containedType.propertyName().capitalize()}(${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${containedType.propertyName()}: ${containedType.typeName()}) = ${if (containedType is ContainerSpec) "if (${containedType.propertyName()}.isEmpty()) copy(map = map - ${coordinatesType.propertyName()}) else " else ""}copy(map = map + (${coordinatesType.propertyName()} to ${containedType.propertyName()}))
+            ${if (containedSubTypes.isEmpty()) """
+            fun with${containedType.propertyName().capitalize()}(${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${containedType.propertyName()}: ${containedType.typeName()}) = if (${containedType.propertyName()}${containedType.emptyCheck()}) copy(map = map - ${coordinatesType.propertyName()}) else copy(map = map + (${coordinatesType.propertyName()} to ${containedType.propertyName()}))
 
-            ${if (containedSubTypes.isEmpty()) {
-                "fun without${containedType.propertyName().capitalize()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)"
-            } else
-                ""
-            }
+            fun without${containedType.propertyName().capitalize()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)
+            """ else "" }
             ${generateIndexIterator(containedType.typeName())}
             ${generateLoopIterator()}
             """ else ""}
