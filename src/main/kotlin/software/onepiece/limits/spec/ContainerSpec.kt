@@ -37,7 +37,7 @@ class ContainerSpec(
             }
             ${generateCommandFunctions()}
             fun fromJson(json: String) : Command {
-                val entries = json.replace("{", "").replace("}", "").replace("\"", "").split(",").map { it.split("=").let { entry -> entry[0].trim() to entry[1].trim() } }.toMap()
+                val entries = json.replace("{", "").replace("}", "").replace("\"", "").replace("\\n", "\n").split(",").map { it.split(":").let { entry -> entry[0].trim() to entry[1].trim() } }.toMap() //FIXME escape \\" and trim each single entries
                 return when(entries.getValue("command").toInt()) {
                     ${jsonParseCode.joinToString("\n                    ")}
                     else -> throw RuntimeException("command type not known")
@@ -297,7 +297,7 @@ class ContainerSpec(
         val argumentListFunction =
                 coordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }
         val argumentListJson =
-                coordinates.joinToString(separator = ", ") { """"${it.first.propertyName(it.second)}" = "${'$'}${it.first.propertyName(it.second)}"""" }
+                coordinates.joinToString(separator = ",") { """"${it.first.propertyName(it.second)}":"${'$'}{${it.first.propertyName(it.second)}${if (it.first.typeName() == "String") """.replace("\n", "\\n")""" else ""}}"""" }
         val argumentListFunctionFromString =
                 coordinates.joinToString(separator = ", ") { if (it.first is NativePrimitiveSpec) """entries.getValue("${it.first.propertyName(it.second)}").to${it.first.typeName()}()""" else """${it.first.typeName()}.of(entries.getValue("${it.first.propertyName(it.second)}"))""" }
 
@@ -307,7 +307,7 @@ class ContainerSpec(
                     target.$kind$propertyName($argumentListFunction)
 
                 override fun toJson() =
-                    ""${'"'}{ "command" = $commandCounter, $argumentListJson }""${'"'}
+                    ""${'"'}{"command":$commandCounter,$argumentListJson}""${'"'}
             }
 
             fun $kind$propertyName($paramListFunction) : Command =
