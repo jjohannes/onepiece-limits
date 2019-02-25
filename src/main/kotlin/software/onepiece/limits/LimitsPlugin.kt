@@ -34,6 +34,7 @@ class LimitsPlugin: Plugin<Project> {
 
                 sub.plugins.apply("org.jetbrains.kotlin.jvm")
                 sub.dependencies.add("compile", "org.jetbrains.kotlin:kotlin-stdlib:1.3.0")
+                sub.dependencies.add("compile", "com.fasterxml.jackson.core:jackson-annotations:2.9.8")
 
                 val sourceSets = sub.properties["sourceSets"] as SourceSetContainer
                 val kotlinSourceSet = (sourceSets.getByName("main") as HasConvention).convention.getPlugin(KotlinSourceSet::class.java).kotlin
