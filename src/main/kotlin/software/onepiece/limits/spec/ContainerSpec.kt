@@ -31,19 +31,14 @@ class ContainerSpec(
 
         object ${typeName}Commands {
 
+            @com.fasterxml.jackson.annotation.JsonTypeInfo(
+                use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.MINIMAL_CLASS,
+                include = com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY,
+                property = "cmd")
             interface Command {
                 fun apply(target: $typeName): $typeName
-                fun toJson() : String
             }
             ${generateCommandFunctions()}
-            fun fromJson(json: String) : Command {
-                val entries = json.replace("{", "").replace("}", "").replace("\"", "").replace("\\n", "\n").split(",").map { it.split(":").let { entry -> entry[0].trim() to entry[1].trim() } }.toMap() //FIXME escape \\" and trim each single entries
-                return when(entries.getValue("command").toInt()) {
-                    ${jsonParseCode.joinToString("\n                    ")}
-                    else -> throw RuntimeException("command type not known")
-                }
-            }
-
         }
     """.trimIndent() else ""
 
@@ -296,22 +291,17 @@ class ContainerSpec(
                 coordinates.joinToString(separator = ", ") { "${it.first.propertyName(it.second)}: ${it.first.typeName()}" }
         val argumentListFunction =
                 coordinates.joinToString(separator = ", ") { it.first.propertyName(it.second) }
-        val argumentListJson =
-                coordinates.joinToString(separator = ",") { """"${it.first.propertyName(it.second)}":"${'$'}{${it.first.propertyName(it.second)}${if (it.first.typeName() == "String") """.replace("\n", "\\n")""" else ""}}"""" }
         val argumentListFunctionFromString =
                 coordinates.joinToString(separator = ", ") { if (it.first is NativePrimitiveSpec) """entries.getValue("${it.first.propertyName(it.second)}").to${it.first.typeName()}()""" else """${it.first.typeName()}.of(entries.getValue("${it.first.propertyName(it.second)}"))""" }
 
         return """
-            private data class Command$commandCounter($paramListConstructor) : Command {
+            private data class C$commandCounter($paramListConstructor) : Command {
                 override fun apply(target: $typeName) =
                     target.$kind$propertyName($argumentListFunction)
-
-                override fun toJson() =
-                    ""${'"'}{"command":$commandCounter,$argumentListJson}""${'"'}
             }
 
             fun $kind$propertyName($paramListFunction) : Command =
-                Command$commandCounter($argumentListFunction)
+                C$commandCounter($argumentListFunction)
         """.also {
             jsonParseCode.add("$commandCounter -> $kind$propertyName($argumentListFunctionFromString)")
             commandCounter++
