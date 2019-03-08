@@ -21,14 +21,16 @@ class CoordinateSpec(val projectName: String, val limit: Int, val typeName: Stri
                     if (unlimitedInt > ${limit - 1}) {
                         return $literalPrefix${limit - 1}
                     }
-                    return values()[unlimitedInt]
+                    return values[unlimitedInt]
                 }
 
                 fun of(string: String) = of(string.toInt())
 
                 val zero = ${literalPrefix}0
 
-                fun saveValue(ordinal: Int) = values()[Math.max(0, Math.min(${limit - 1}, ordinal))]
+                val values = values().asList()
+
+                fun saveValue(ordinal: Int) = values[Math.max(0, Math.min(${limit - 1}, ordinal))]
             }
 
             override fun toString() = ordinal.toString().padStart(2, '0')
