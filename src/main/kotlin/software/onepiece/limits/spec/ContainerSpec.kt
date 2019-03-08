@@ -155,7 +155,7 @@ class ContainerSpec(
 
                 override fun hasNext(): Boolean = idx < ${coordinatesType.generateSizeFieldsSum()}
 
-                fun current() = ${coordinatesType.typeName()}.values()[idx]
+                fun current() = ${coordinatesType.typeName()}.values[idx]
 
                 override fun next(): ${coordinatesType.typeName()} {
                     if (idx == size - 1) {
