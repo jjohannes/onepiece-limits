@@ -325,9 +325,9 @@ class ContainerSpec(
                     ${current.attributes().filter { it !is ContainerSpec }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { commands.add(${typeName}Commands.with${it.propertyName().capitalize()}(${argumentListFunction}current.${it.propertyName()})) }" }}
                     ${current.attributes().filter { it is ContainerSpec  }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { diff(${argumentListFunction}current.${it.propertyName()}, previous.${it.propertyName()}, commands) }" }}
                     ${when {
-                        node.children.isEmpty() && (current.containedType() is ContainerSpec || current.containedType() is SuperContainerSpec || current.containedType() == NullSpec) -> "" /* end of recursion */
+                        (node.children.isEmpty() || current.containedType() == NullSpec) && (current.containedType() is ContainerSpec || current.containedType() is SuperContainerSpec || current.containedType() == NullSpec) -> "" /* end of recursion */
                         current.containedSubTypes().isEmpty() -> "current.union(previous).forEach { diff(${argumentListFunction}it, current[it], previous[it], commands) }"
-                        else -> current.containedSubTypes().joinToString("\n                    ") { "current.${it.propertyName()}s.forEach { diff(${argumentListFunction}it, current.${it.propertyName()}s[it], previous.${it.propertyName()}s[it], commands) }" }
+                        else -> current.containedSubTypes().joinToString("\n                    ") { "current.${it.propertyName()}s.union(previous.${it.propertyName()}s).forEach { diff(${argumentListFunction}it, current.${it.propertyName()}s[it], previous.${it.propertyName()}s[it], commands) }" }
                     }}
                 }
             }
