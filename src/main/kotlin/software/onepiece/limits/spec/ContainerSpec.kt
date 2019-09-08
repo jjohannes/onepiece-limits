@@ -194,7 +194,7 @@ class ContainerSpec(
 
         val isAccessThroughAttribute = if (parents.size > 1) parents[1].isAttribute else node.isAttribute
 
-        val p = if (parents.isEmpty()) emptyList() else parents.subList(1, parents.size).toMutableList()
+        val p = if (parents.isEmpty()) mutableListOf() else parents.subList(1, parents.size).toMutableList()
         val toRemove = mutableListOf<Int>()
         for (i in 1 until p.size) {
             // nested through attribute
