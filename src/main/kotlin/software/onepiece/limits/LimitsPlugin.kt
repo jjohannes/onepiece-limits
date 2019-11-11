@@ -33,8 +33,9 @@ class LimitsPlugin: Plugin<Project> {
                 val generatedSrcFolder = File(sub.buildDir, "generated-src")
 
                 sub.plugins.apply("org.jetbrains.kotlin.jvm")
-                sub.dependencies.add("compile", "org.jetbrains.kotlin:kotlin-stdlib:1.3.50")
-                sub.dependencies.add("compile", "com.fasterxml.jackson.core:jackson-annotations:2.9.9")
+                sub.plugins.apply("java-library")
+                sub.dependencies.add("implementation", "org.jetbrains.kotlin:kotlin-stdlib:1.3.50")
+                sub.dependencies.add("implementation", "com.fasterxml.jackson.core:jackson-annotations:2.9.9")
 
                 val sourceSets = sub.properties["sourceSets"] as SourceSetContainer
                 val kotlinSourceSet = (sourceSets.getByName("main") as HasConvention).convention.getPlugin(KotlinSourceSet::class.java).kotlin
@@ -55,22 +56,22 @@ class LimitsPlugin: Plugin<Project> {
                     if (spec is ContainerSpec) {
                         if (spec.containedType.projectName() != spec.projectName && !spec.containedType.projectName().isEmpty()) {
                             val projectDependency = sub.dependencies.project(":${spec.containedType.projectName()}")
-                            sub.dependencies.add("compile", projectDependency)
+                            sub.dependencies.add("api", projectDependency)
                         }
                         if (spec.coordinatesType.projectName() != spec.projectName && !spec.coordinatesType.projectName().isEmpty()) {
                             val projectDependency = sub.dependencies.project(":${spec.coordinatesType.projectName()}")
-                            sub.dependencies.add("compile", projectDependency)
+                            sub.dependencies.add("api", projectDependency)
                         }
                         spec.containedSubTypes.forEach {
                             if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
                                 val projectDependency = sub.dependencies.project(":${it.projectName()}")
-                                sub.dependencies.add("compile", projectDependency)
+                                sub.dependencies.add("api", projectDependency)
                             }
                         }
                         spec.attributes.forEach {
                             if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
                                 val projectDependency = sub.dependencies.project(":${it.projectName()}")
-                                sub.dependencies.add("compile", projectDependency)
+                                sub.dependencies.add("api", projectDependency)
                             }
                         }
                     }
