@@ -34,7 +34,7 @@ class LimitsPlugin: Plugin<Project> {
 
                 sub.plugins.apply("org.jetbrains.kotlin.jvm")
                 sub.plugins.apply("java-library")
-                sub.dependencies.add("implementation", "org.jetbrains.kotlin:kotlin-stdlib:1.3.50")
+                sub.dependencies.add("implementation", "org.jetbrains.kotlin:kotlin-stdlib")
                 sub.dependencies.add("implementation", "com.fasterxml.jackson.core:jackson-annotations:2.9.9")
 
                 val sourceSets = sub.properties["sourceSets"] as SourceSetContainer
