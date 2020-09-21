@@ -7,11 +7,10 @@ version = "0.0.1"
 
 repositories {
     gradlePluginPortal()
-    mavenCentral()
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin:1.3.50")
+    implementation(kotlin("gradle-plugin"))
 }
 
 gradlePlugin {
