@@ -26,7 +26,7 @@ class LimitsPlugin: Plugin<Project> {
             }
             val allSpecs = collectedSpecs.groupBy { it.projectName() }
 
-            allSpecs.forEach { projectName, specs ->
+            allSpecs.forEach { (projectName, specs) ->
                 val sub = project.findProject(":$projectName") ?:
                         throw RuntimeException("Project '$projectName' needs to be included in build")
                 sub.projectDir.mkdirs()
@@ -54,22 +54,22 @@ class LimitsPlugin: Plugin<Project> {
                 }
                 specs.forEach { spec ->
                     if (spec is ContainerSpec) {
-                        if (spec.containedType.projectName() != spec.projectName && !spec.containedType.projectName().isEmpty()) {
+                        if (spec.containedType.projectName() != spec.projectName && spec.containedType.projectName().isNotEmpty()) {
                             val projectDependency = sub.dependencies.project(":${spec.containedType.projectName()}")
                             sub.dependencies.add("api", projectDependency)
                         }
-                        if (spec.coordinatesType.projectName() != spec.projectName && !spec.coordinatesType.projectName().isEmpty()) {
+                        if (spec.coordinatesType.projectName() != spec.projectName && spec.coordinatesType.projectName().isNotEmpty()) {
                             val projectDependency = sub.dependencies.project(":${spec.coordinatesType.projectName()}")
                             sub.dependencies.add("api", projectDependency)
                         }
                         spec.containedSubTypes.forEach {
-                            if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
+                            if (it.projectName() != spec.projectName && it.projectName().isNotEmpty()) {
                                 val projectDependency = sub.dependencies.project(":${it.projectName()}")
                                 sub.dependencies.add("api", projectDependency)
                             }
                         }
                         spec.attributes.forEach {
-                            if (it.projectName() != spec.projectName && !it.projectName().isEmpty()) {
+                            if (it.projectName() != spec.projectName && it.projectName().isNotEmpty()) {
                                 val projectDependency = sub.dependencies.project(":${it.projectName()}")
                                 sub.dependencies.add("api", projectDependency)
                             }
