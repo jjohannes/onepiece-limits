@@ -1,8 +1,10 @@
 package software.onepiece.limits
 
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 import software.onepiece.limits.spec.Spec
 
-open class LimitsPluginExtension {
-    lateinit var packageName: String
-    lateinit var specs: List<Spec>
+abstract class LimitsPluginExtension {
+    abstract val packageName: Property<String>
+    abstract val specs: ListProperty<Spec>
 }

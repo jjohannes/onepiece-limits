@@ -88,7 +88,7 @@ class ContainerSpec(
             ${generateLoopIterator()}
             """ else ""}
             ${attributes.joinToString(separator = "\n            ") { "fun with${it.propertyName().capitalize()}(${it.propertyName()}: ${it.typeName()}) = copy(${it.propertyName()} = ${it.propertyName()})" }}
-            ${containedSubTypes.joinToString(separator = "\n            ") { "fun with${it.propertyName().capitalize()}(${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${it.propertyName()}: ${it.typeName()}) = ${if (it is ContainerSpec) "if (${it.propertyName()}.isEmpty()) copy(map = map - ${coordinatesType.propertyName()}) else " else ""}copy(map = map + (${coordinatesType.propertyName()} to ${it.propertyName()}))" }}
+            ${containedSubTypes.joinToString(separator = "\n            ") { "fun with${it.propertyName().capitalize()}(${coordinatesType.propertyName()}: ${coordinatesType.typeName()}, ${it.propertyName()}: ${it.typeName()}) = if (${it.propertyName()}.isEmpty()) copy(map = map - ${coordinatesType.propertyName()}) else copy(map = map + (${coordinatesType.propertyName()} to ${it.propertyName()}))" }}
             ${containedSubTypes.joinToString(separator = "\n            ") { "fun without${it.propertyName().capitalize()}(entry: ${coordinatesType.typeName()}): $typeName = copy(map = map - entry)" }}
             ${generateCopyFunctions()}
             ${containedSubTypes.joinToString(separator = "\n            ") { generateAccess(it) }}

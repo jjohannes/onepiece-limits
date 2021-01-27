@@ -1,92 +1,67 @@
 package software.onepiece.limits
 
+import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.internal.HasConvention
-import java.io.File
+import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.SourceSetContainer
-import org.gradle.kotlin.dsl.project
-import org.gradle.kotlin.dsl.withType
+import org.gradle.kotlin.dsl.*
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import software.onepiece.limits.spec.*
 
 
 class LimitsPlugin: Plugin<Project> {
 
-    override fun apply(project: Project) {
-        val extension = project.extensions.create("limits", LimitsPluginExtension::class.java)
+    override fun apply(project: Project): Unit = with(project) {
+        plugins.apply("org.jetbrains.kotlin.jvm")
+        plugins.apply("java-library")
 
-        project.afterEvaluate {
-            val collectedSpecs = extension.specs.map { spec -> collectSpecs(spec) }.flatten().distinct().filter { it != NullSpec }
-            collectedSpecs.forEach { spec ->
-                if (spec is ContainerSpec) {
-                    spec.attributes = spec.attributes.map { ref -> if (ref is SpecReference) collectedSpecs.find { it.typeName() == ref.typeName }!! else ref }
+        val sourceSets = the<SourceSetContainer>()
+        val extension = extensions.create("limits", LimitsPluginExtension::class)
+
+        val generatedSrcFolder = layout.buildDirectory.dir("generated-src")
+        dependencies.add("implementation", "com.fasterxml.jackson.core:jackson-annotations:2.12.1")
+
+        the<JavaPluginExtension>().apply {
+            sourceCompatibility = JavaVersion.VERSION_1_8
+            targetCompatibility = JavaVersion.VERSION_1_8
+        }
+
+        val kotlinSourceSet = sourceSets["main"].withConvention(KotlinSourceSet::class) { kotlin }
+        kotlinSourceSet.srcDir(generatedSrcFolder)
+
+        val generationTask = tasks.create("generateLimitSources", LimitsGenerationTask::class) {
+            packageName.set(extension.packageName)
+            typeSpecs.set(extension.specs)
+            out.convention(generatedSrcFolder)
+        }
+        tasks.withType(KotlinCompile::class) {
+            dependsOn(generationTask)
+        }
+        /*specs.forEach { spec ->
+            if (spec is ContainerSpec) {
+                if (spec.containedType.projectName() != spec.projectName && spec.containedType.projectName().isNotEmpty()) {
+                    val projectDependency = dependencies.project(":${spec.containedType.projectName()}")
+                    dependencies.add("api", projectDependency)
                 }
-            }
-            val allSpecs = collectedSpecs.groupBy { it.projectName() }
-
-            allSpecs.forEach { (projectName, specs) ->
-                val sub = project.findProject(":$projectName") ?:
-                        throw RuntimeException("Project '$projectName' needs to be included in build")
-                sub.projectDir.mkdirs()
-                val generatedSrcFolder = File(sub.buildDir, "generated-src")
-
-                sub.plugins.apply("org.jetbrains.kotlin.jvm")
-                sub.plugins.apply("java-library")
-                sub.dependencies.add("implementation", "org.jetbrains.kotlin:kotlin-stdlib")
-                sub.dependencies.add("implementation", "com.fasterxml.jackson.core:jackson-annotations:2.12.1")
-
-                val sourceSets = sub.properties["sourceSets"] as SourceSetContainer
-                val kotlinSourceSet = (sourceSets.getByName("main") as HasConvention).convention.getPlugin(KotlinSourceSet::class.java).kotlin
-                kotlinSourceSet.srcDir(generatedSrcFolder)
-
-                val generationTask = sub.tasks.create("generateLimitSources", LimitsGenerationTask::class.java)
-                with(generationTask) {
-                    packageName = extension.packageName
-                    typeSpecs = specs
-                    out = generatedSrcFolder
+                if (spec.coordinatesType.projectName() != spec.projectName && spec.coordinatesType.projectName().isNotEmpty()) {
+                    val projectDependency = dependencies.project(":${spec.coordinatesType.projectName()}")
+                    dependencies.add("api", projectDependency)
                 }
-
-                sub.tasks.withType(KotlinCompile::class) {
-                    dependsOn(generationTask)
-                    // kotlinOptions.jvmTarget = "1.8"
-                }
-                specs.forEach { spec ->
-                    if (spec is ContainerSpec) {
-                        if (spec.containedType.projectName() != spec.projectName && spec.containedType.projectName().isNotEmpty()) {
-                            val projectDependency = sub.dependencies.project(":${spec.containedType.projectName()}")
-                            sub.dependencies.add("api", projectDependency)
-                        }
-                        if (spec.coordinatesType.projectName() != spec.projectName && spec.coordinatesType.projectName().isNotEmpty()) {
-                            val projectDependency = sub.dependencies.project(":${spec.coordinatesType.projectName()}")
-                            sub.dependencies.add("api", projectDependency)
-                        }
-                        spec.containedSubTypes.forEach {
-                            if (it.projectName() != spec.projectName && it.projectName().isNotEmpty()) {
-                                val projectDependency = sub.dependencies.project(":${it.projectName()}")
-                                sub.dependencies.add("api", projectDependency)
-                            }
-                        }
-                        spec.attributes.forEach {
-                            if (it.projectName() != spec.projectName && it.projectName().isNotEmpty()) {
-                                val projectDependency = sub.dependencies.project(":${it.projectName()}")
-                                sub.dependencies.add("api", projectDependency)
-                            }
-                        }
+                spec.containedSubTypes.forEach {
+                    if (it.projectName() != spec.projectName && it.projectName().isNotEmpty()) {
+                        val projectDependency = dependencies.project(":${it.projectName()}")
+                        dependencies.add("api", projectDependency)
                     }
                 }
-
+                spec.attributes.forEach {
+                    if (it.projectName() != spec.projectName && it.projectName().isNotEmpty()) {
+                        val projectDependency = dependencies.project(":${it.projectName()}")
+                        dependencies.add("api", projectDependency)
+                    }
+                }
             }
-        }
+        }*/
     }
 
-    private fun collectSpecs(spec: Spec?): Set<Spec> =
-            when(spec) {
-                is CoordinateSpec -> setOf(spec)
-                is Coordinates2Spec -> setOf(spec, spec.xType, spec.yType)
-                is ContainerSpec -> setOf(spec) + collectSpecs(spec.containedType) + spec.containedSubTypes.map { collectSpecs(it) }.flatten() + collectSpecs(spec.coordinatesType) + spec.attributes.map { collectSpecs(it) }.flatten()
-                is SuperContainerSpec -> setOf(spec)
-                else -> setOf()
-            }
 }
