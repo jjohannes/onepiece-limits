@@ -24,6 +24,8 @@ class ContainerSpec(
     private val jsonParseCode = mutableListOf<String>()
     private val visitorFunctionTypes = mutableSetOf<ContainerSpec>()
 
+    private var commandFunctions = ""
+
     override fun generateCommandFactory(packageName: String) = if (root) """
         package $packageName.entities.$projectName
 
@@ -31,14 +33,13 @@ class ContainerSpec(
 
         object ${typeName}Commands {
 
-            @com.fasterxml.jackson.annotation.JsonTypeInfo(
-                use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.MINIMAL_CLASS,
-                include = com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY,
-                property = "cmd")
-            interface Command {
-                fun apply(target: $typeName): $typeName
+            @kotlinx.serialization.Serializable
+            sealed class Command {
+                abstract fun apply(target: $typeName): $typeName
+                
+                ${generateCommandFunctions()}
             }
-            ${generateCommandFunctions()}
+            ${commandFunctions.also { commandFunctions = "" }}
         }
     """.trimIndent() else ""
 
@@ -295,14 +296,14 @@ class ContainerSpec(
                 coordinates.joinToString(separator = ", ") { if (it.first is NativePrimitiveSpec) """entries.getValue("${it.first.propertyName(it.second)}").to${it.first.typeName()}()""" else """${it.first.typeName()}.of(entries.getValue("${it.first.propertyName(it.second)}"))""" }
 
         return """
-            private data class C$commandCounter($paramListConstructor) : Command {
-                override fun apply(target: $typeName) =
-                    target.$kind$propertyName($argumentListFunction)
-            }
-
-            fun $kind$propertyName($paramListFunction) : Command =
-                C$commandCounter($argumentListFunction)
+                @kotlinx.serialization.Serializable 
+                data class C$commandCounter($paramListConstructor) : Command() {
+                    override fun apply(target: $typeName) = target.$kind$propertyName($argumentListFunction)
+                }
         """.also {
+            commandFunctions += """
+            fun $kind$propertyName($paramListFunction) : Command = Command.C$commandCounter($argumentListFunction)
+        """
             jsonParseCode.add("$commandCounter -> $kind$propertyName($argumentListFunctionFromString)")
             commandCounter++
         }

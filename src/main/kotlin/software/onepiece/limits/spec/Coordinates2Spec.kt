@@ -10,6 +10,7 @@ class Coordinates2Spec(val projectName: String, val typeName: String, val xType:
     override fun generate(packageName: String): String = """
         package $packageName.entities.$projectName
 
+        @kotlinx.serialization.Serializable 
         data class $typeName private constructor(val x: ${xType.typeName}, val y: ${yType.typeName}) : Comparable<$typeName> {
             companion object {
                 private val pool = mutableMapOf<Int, $typeName>()

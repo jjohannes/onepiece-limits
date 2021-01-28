@@ -10,6 +10,7 @@ class CoordinateSpec(val projectName: String, val limit: Int, val typeName: Stri
     override fun generate(packageName: String): String = """
         package $packageName.entities.$projectName
 
+        @kotlinx.serialization.Serializable 
         enum class $typeName {
             ${(0 until limit).joinToString { literalPrefix + it }};
 
@@ -30,7 +31,7 @@ class CoordinateSpec(val projectName: String, val limit: Int, val typeName: Stri
 
                 val values = values().asList()
 
-                fun saveValue(ordinal: Int) = values[Math.max(0, Math.min(${limit - 1}, ordinal))]
+                fun saveValue(ordinal: Int) = values[kotlin.math.max(0, kotlin.math.min(${limit - 1}, ordinal))]
             }
 
             override fun toString() = ordinal.toString().padStart(2, '0')
