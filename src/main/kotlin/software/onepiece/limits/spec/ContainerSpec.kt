@@ -120,10 +120,10 @@ class ContainerSpec(
     private fun generateIndexIterator(type: String) = """
             private class IndexIterator$type(val map: Map<${coordinatesType.typeName()}, ${containedType.typeName()}>) : Iterator<${coordinatesType.typeName()}> {
                 var idx = 0
-                var next: ${coordinatesType.typeName()}? = null
+                var nextElement: ${coordinatesType.typeName()}? = null
 
                 override fun hasNext(): Boolean {
-                    if (next != null) {
+                    if (nextElement != null) {
                         return true
                     }
                     if (idx == ${coordinatesType.generateSizeFieldsSum()}) {
@@ -131,18 +131,18 @@ class ContainerSpec(
                     }
                     val coordinates = ${coordinatesType.generateIndexIteratorEntry()}
                     if (map[coordinates] is $type) {
-                        next = coordinates
+                        nextElement = coordinates
                     }
                     idx++
                     return hasNext()
                 }
 
                 override fun next(): ${coordinatesType.typeName()} {
-                    if (next == null) {
+                    if (nextElement == null) {
                         hasNext()
                     }
-                    val v = next!!
-                    next = null
+                    val v = nextElement!!
+                    nextElement = null
                     return v
                 }
             }
