@@ -1,24 +1,20 @@
 package software.onepiece.limits.spec
 
 class ContainerSpec(
-        val projectName: String,
-        val typeName: String,
-        val coordinatesType: CoordinatesSpec = NullSpec,
-        val containedType: Spec = NullSpec,
-        val containedSubTypes: List<ContainerSpec> = emptyList(),
-        val superType: SuperContainerSpec? = null,
-        var attributes: List<Spec> = emptyList(),
-        val root: Boolean = false,
-        val recursionDepth: Int = 3) : Spec {
+        private val projectName: String,
+        private val typeName: String,
+        private val coordinatesType: CoordinatesSpec = NullSpec,
+        private val containedType: Spec = NullSpec,
+        private val containedSubTypes: List<ContainerSpec> = emptyList(),
+        private val superType: SuperContainerSpec? = null,
+        private val attributes: List<Spec> = emptyList(),
+        private val root: Boolean = false,
+        private val recursionDepth: Int = 3) : Spec {
 
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateEmpty() = "${typeName()}.empty"
     override fun emptyCheck() = ".isEmpty()"
-    fun coordinatesType() = coordinatesType
-    fun containedType() = containedType
-    fun attributes() = attributes
-    fun containedSubTypes() = containedSubTypes
 
     private var commandCounter = 0
     private val jsonParseCode = mutableListOf<String>()
@@ -179,7 +175,7 @@ class ContainerSpec(
         """ else ""
 
     private fun generateImports(basePackageName: String) =
-            (collectChildTypes(buildTypeGraph("", this, false, false, 1)).distinct().map { setOf(it.coordinatesType().projectName(), it.containedType().projectName()) }.flatten().toSet() + containedSubTypes.map { it.projectName() } + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
+            (collectChildTypes(buildTypeGraph("", this, false, false, 1)).distinct().map { setOf(it.coordinatesType.projectName(), it.containedType.projectName()) }.flatten().toSet() + containedSubTypes.map { it.projectName() } + attributes.map { it.projectName() } - setOf(projectName, "")).joinToString(separator = "; ") { "import $basePackageName.entities.$it.*" }
 
     private fun collectChildTypes(node: Node): List<ContainerSpec> = listOf(node.current) + node.children.map { collectChildTypes(it) }.flatten()
 
@@ -218,46 +214,46 @@ class ContainerSpec(
                     accessName.decapitalize()
                 } else {
                     // sub-type access
-                    "${parents[0].current.coordinatesType().propertyName()}, ${accessName.decapitalize()}s[${parents[0].current.coordinatesType().propertyName()}]"
+                    "${parents[0].current.coordinatesType.propertyName()}, ${accessName.decapitalize()}s[${parents[0].current.coordinatesType.propertyName()}]"
                 }
             } else {
-                "${parents[0].current.coordinatesType().propertyName()}, this[${parents[0].current.coordinatesType().propertyName()}]"
+                "${parents[0].current.coordinatesType.propertyName()}, this[${parents[0].current.coordinatesType.propertyName()}]"
             }
 
-            val childPropertyName = if (accessName != "") accessName else parents[0].current.containedType().propertyName().capitalize()
-            if (node.current.containedType() !is SuperContainerSpec && node.current.containedType() != NullSpec) {
-                val propertyName = node.current.containedType().propertyName().capitalize()
+            val childPropertyName = if (accessName != "") accessName else parents[0].current.containedType.propertyName().capitalize()
+            if (node.current.containedType !is SuperContainerSpec && node.current.containedType != NullSpec) {
+                val propertyName = node.current.containedType.propertyName().capitalize()
                 result += generateModifyFunction(propertyName, "with", childPropertyName, accessCode,
-                        requiredCoordinates.map { it.current.coordinatesType() to it.recursion } + (node.current.coordinatesType() to node.recursion) + (node.current.containedType() to 0),
-                        p.map { it.current.coordinatesType() to it.recursion } + (node.current.coordinatesType() to node.recursion) + (node.current.containedType() to 0))
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0),
+                        p.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0))
                 result += generateModifyFunction(propertyName, "without", childPropertyName, accessCode,
-                        requiredCoordinates.map { it.current.coordinatesType() to it.recursion } + (node.current.coordinatesType() to node.recursion),
-                        p.map { it.current.coordinatesType() to it.recursion } + (node.current.coordinatesType() to node.recursion))
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion),
+                        p.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion))
             }
-            node.current.attributes().filter { it !is ContainerSpec }.forEach { attribute ->
+            node.current.attributes.filter { it !is ContainerSpec }.forEach { attribute ->
                 result += generateModifyFunction(attribute.propertyName().capitalize(), "with", childPropertyName, accessCode,
-                        requiredCoordinates.map { it.current.coordinatesType() to it.recursion } + (attribute to 0),
-                        p.map { it.current.coordinatesType() to it.recursion } + (attribute to 0))
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (attribute to 0),
+                        p.map { it.current.coordinatesType to it.recursion } + (attribute to 0))
             }
         }
 
-        if (asCommands && node.current.containedType() !is ContainerSpec && node.current.containedType() !is SuperContainerSpec && node.current.containedType() != NullSpec) {
-            val propertyName = node.current.containedType().propertyName().capitalize()
+        if (asCommands && node.current.containedType !is ContainerSpec && node.current.containedType !is SuperContainerSpec && node.current.containedType != NullSpec) {
+            val propertyName = node.current.containedType.propertyName().capitalize()
             commandResult += generateCommand(propertyName, "with",
-                    requiredCoordinates.map { it.current.coordinatesType() to it.recursion } + (node.current.coordinatesType() to node.recursion) + (node.current.containedType() to 0))
+                    requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion) + (node.current.containedType to 0))
             commandResult += generateCommand(propertyName, "without",
-                    requiredCoordinates.map { it.current.coordinatesType() to it.recursion } + (node.current.coordinatesType() to node.recursion))
+                    requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (node.current.coordinatesType to node.recursion))
         }
         if (asCommands) {
-            node.current.attributes().filter { it !is ContainerSpec }.forEach { attribute ->
+            node.current.attributes.filter { it !is ContainerSpec }.forEach { attribute ->
                 commandResult += generateCommand(attribute.propertyName().capitalize(), "with",
-                        requiredCoordinates.map { it.current.coordinatesType() to it.recursion } + (attribute to 0))
+                        requiredCoordinates.map { it.current.coordinatesType to it.recursion } + (attribute to 0))
             }
         }
 
         if (asDiff) {
              diffResult += generateDiff(node,
-                    requiredCoordinates.map { it.current.coordinatesType() to it.recursion })
+                    requiredCoordinates.map { it.current.coordinatesType to it.recursion })
         }
 
         node.children.forEach { nextChild ->
@@ -323,19 +319,19 @@ class ContainerSpec(
             fun diff(${paramListFunction}current: $propertyName, previous: $propertyName, commands: MutableList<${typeName}Commands.Command>) {
                 if (current != previous) {
                     visitor?.visit(current, previous, listOf(${argumentListFunction.substringBeforeLast(",").also { visitorFunctionTypes.add(current) }}))
-                    ${current.attributes().filter { it !is ContainerSpec }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { commands.add(${typeName}Commands.with${it.propertyName().capitalize()}(${argumentListFunction}current.${it.propertyName()})) }" }}
-                    ${current.attributes().filter { it is ContainerSpec  }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { diff(${argumentListFunction}current.${it.propertyName()}, previous.${it.propertyName()}, commands) }" }}
+                    ${current.attributes.filter { it !is ContainerSpec }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { commands.add(${typeName}Commands.with${it.propertyName().capitalize()}(${argumentListFunction}current.${it.propertyName()})) }" }}
+                    ${current.attributes.filter { it is ContainerSpec  }.joinToString("\n                    ") { "if (current.${it.propertyName()} != previous.${it.propertyName()}) { diff(${argumentListFunction}current.${it.propertyName()}, previous.${it.propertyName()}, commands) }" }}
                     ${when {
-                        (node.children.isEmpty() || current.containedType() == NullSpec) && (current.containedType() is ContainerSpec || current.containedType() is SuperContainerSpec || current.containedType() == NullSpec) -> "" /* end of recursion */
-                        current.containedSubTypes().isEmpty() -> "current.union(previous).forEach { diff(${argumentListFunction}it, current[it], previous[it], commands) }"
-                        else -> current.containedSubTypes().joinToString("\n                    ") { "current.${it.propertyName()}s.union(previous.${it.propertyName()}s).forEach { diff(${argumentListFunction}it, current.${it.propertyName()}s[it], previous.${it.propertyName()}s[it], commands) }" }
+                        (node.children.isEmpty() || current.containedType == NullSpec) && (current.containedType is ContainerSpec || current.containedType is SuperContainerSpec || current.containedType == NullSpec) -> "" /* end of recursion */
+                        current.containedSubTypes.isEmpty() -> "current.union(previous).forEach { diff(${argumentListFunction}it, current[it], previous[it], commands) }"
+                        else -> current.containedSubTypes.joinToString("\n                    ") { "current.${it.propertyName()}s.union(previous.${it.propertyName()}s).forEach { diff(${argumentListFunction}it, current.${it.propertyName()}s[it], previous.${it.propertyName()}s[it], commands) }" }
                     }}
                 }
             }
-        """ + if (current.containedType() is ContainerSpec || current.containedType() is SuperContainerSpec || current.containedType() is NullSpec) "" else """
-            fun diff($paramListFunction${current.coordinatesType().propertyName(node.recursion)}: ${current.coordinatesType().typeName()}, current: ${current.containedType().typeName()}, previous: ${current.containedType().typeName()}, commands: MutableList<${typeName}Commands.Command>) {
+        """ + if (current.containedType is ContainerSpec || current.containedType is SuperContainerSpec || current.containedType is NullSpec) "" else """
+            fun diff($paramListFunction${current.coordinatesType.propertyName(node.recursion)}: ${current.coordinatesType.typeName()}, current: ${current.containedType.typeName()}, previous: ${current.containedType.typeName()}, commands: MutableList<${typeName}Commands.Command>) {
                 if (current != previous) {
-                    commands.add(${typeName}Commands.with${current.containedType().propertyName().capitalize()}($argumentListFunction${current.coordinatesType().propertyName(node.recursion)}, current))
+                    commands.add(${typeName}Commands.with${current.containedType.propertyName().capitalize()}($argumentListFunction${current.coordinatesType.propertyName(node.recursion)}, current))
                 }
             }
         """
@@ -343,13 +339,13 @@ class ContainerSpec(
 
     private fun buildTypeGraph(access: String, spec: ContainerSpec, isSubtype: Boolean = false, isAttribute: Boolean = false, depth: Int = recursionDepth, recursionCounter: Map<ContainerSpec, Int> = emptyMap()): Node {
         return Node(access, spec, isSubtype, isAttribute, recursionCounter.getOrDefault(spec, 0), emptyList<Node>()
-                + if (spec.containedType() is ContainerSpec && recursionCounter.getOrDefault(spec.containedType(), 0) < depth && spec.containedSubTypes().isEmpty()) {
-                        listOf(buildTypeGraph("", spec.containedType() as ContainerSpec, false, false, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)))
+                + if (spec.containedType is ContainerSpec && recursionCounter.getOrDefault(spec.containedType, 0) < depth && spec.containedSubTypes.isEmpty()) {
+                        listOf(buildTypeGraph("", spec.containedType, false, false, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)))
                     } else {
                         emptyList()
                     }
-                + spec.containedSubTypes().filter { recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it, true, false, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
-                + spec.attributes().filter { it is ContainerSpec && recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it as ContainerSpec, false, true, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
+                + spec.containedSubTypes.filter { recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it, true, false, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
+                + spec.attributes.filter { it is ContainerSpec && recursionCounter.getOrDefault(it, 0) < depth }.map { buildTypeGraph(it.typeName(), it as ContainerSpec, false, true, depth, recursionCounter + (spec to recursionCounter.getOrDefault(spec, 0) + 1)) }
         )
     }
 

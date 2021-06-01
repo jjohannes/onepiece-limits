@@ -1,6 +1,6 @@
 package software.onepiece.limits.spec
 
-class SuperContainerSpec(val projectName: String, val typeName: String) : Spec {
+class SuperContainerSpec(private val projectName: String, private val typeName: String) : Spec {
     override fun projectName() = projectName
     override fun typeName() = typeName
 

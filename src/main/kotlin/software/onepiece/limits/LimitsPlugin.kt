@@ -11,10 +11,11 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 abstract class LimitsPlugin: Plugin<Project> {
 
     override fun apply(project: Project): Unit = with(project) {
-        val extension = extensions.create("limits", LimitsPluginExtension::class)
+        val extension = extensions.create<LimitsPluginExtension>("limits")
+        extension.projectName.convention(project.name)
 
-        val generationTask = tasks.register("generateLimitSources", LimitsGenerationTask::class) {
-            packageName.set(extension.packageName)
+        val generationTask = tasks.register<LimitsGenerationTask>("generateLimitSources") {
+            packageName.set(extension.basePackage)
             typeSpecs.set(extension.specs)
             out.convention(layout.buildDirectory.dir("generated-src"))
         }

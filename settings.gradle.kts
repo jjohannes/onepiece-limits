@@ -1,1 +1,1 @@
-rootProject.name = "limits"
+rootProject.name = "onepiece-limits"

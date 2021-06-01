@@ -1,6 +1,6 @@
 package software.onepiece.limits.spec
 
-class CoordinateSpec(val projectName: String, val limit: Int, val typeName: String, val literalPrefix: String) : CoordinatesSpec {
+class CoordinateSpec(private val projectName: String, private val typeName: String, val limit: Int, val literalPrefix: String) : CoordinatesSpec {
     override fun projectName() = projectName
     override fun typeName() = typeName
     override fun generateSizeFields() = "const val size = $limit"
