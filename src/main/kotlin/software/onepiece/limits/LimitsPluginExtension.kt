@@ -22,7 +22,7 @@ abstract class LimitsPluginExtension {
         val attributes = mutableListOf<Spec>()
         val subTypes = mutableListOf<ContainerSpec>()
         conf.execute(LimitsContainerDetails(attributes, subTypes))
-        val spec = ContainerSpec(projectName.get(), name.capitalize(Locale.ROOT), coordinatesType, containedType, emptyList(), null, attributes, true)
+        val spec = ContainerSpec(projectName.get(), name.capitalize(Locale.ROOT), coordinatesType, containedType, subTypes, null, attributes, true)
         specs.add(spec)
         return spec
     }

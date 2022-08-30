@@ -1,12 +1,10 @@
 plugins {
     `kotlin-dsl`
-    `java-gradle-plugin`
-    `maven-publish`
-    id("com.gradle.plugin-publish") version "0.14.0"
+    id("com.gradle.plugin-publish") version "1.0.0"
  }
 
 group = "software.onepiece.limits"
-version = "0.1"
+version = "0.2"
 
 repositories {
     gradlePluginPortal()
