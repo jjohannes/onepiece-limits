@@ -10,6 +10,10 @@ repositories {
     gradlePluginPortal()
 }
 
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(8))
+}
+
 dependencies {
     implementation("org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin:[1.4.0,1.5.10]")
 }
