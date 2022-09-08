@@ -23,6 +23,8 @@ abstract class LimitsGenerationTask : DefaultTask() {
 
     @TaskAction
     fun generateAll() {
+        out.get().asFile.listFiles().forEach { it.delete() }
+
         val specs = typeSpecs.get().filter { it != NullSpec }
         specs.forEach { spec ->
             val targetFolder = out.get().dir("${packageName.get().replace('.', '/')}/entities/${spec.projectName()}")

@@ -11,7 +11,7 @@ class Coordinates2Spec(private val projectName: String, private val typeName: St
         package $packageName.entities.$projectName
 
         @kotlinx.serialization.Serializable 
-        data class $typeName private constructor(val x: ${xType.typeName()}, val y: ${yType.typeName()}) : Comparable<$typeName> {
+        data class $typeName constructor(val x: ${xType.typeName()}, val y: ${yType.typeName()}) : Comparable<$typeName> {
             companion object {
                 private val pool = mutableMapOf<Int, $typeName>()
                 private val limit = ${xType.limit}

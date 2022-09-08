@@ -59,9 +59,9 @@ class ContainerSpec(
 
         ${generateImports(packageName)}
 
-        data class $typeName private constructor(${if (containedType == NullSpec) "" else "private val map: Map<${coordinatesType.typeName()}, ${containedType.typeName()}> = emptyMap()"}${
+        data class $typeName constructor(${if (containedType == NullSpec) "" else "private val map: Map<${coordinatesType.typeName()}, ${containedType.typeName()}> = emptyMap()"}${
             (if (containedType != NullSpec && attributes.isNotEmpty()) ", " else "") + attributes.joinToString { "val ${it.propertyName()}: ${it.typeName()} = ${it.generateEmpty()}" }
-        }): ${if (superType != null) superType.typeName() else "" }${if (superType != null && coordinatesType != NullSpec) ", " else ""}${if (coordinatesType != NullSpec) "Iterable<${coordinatesType.typeName()}>" else ""} {
+        }) ${if (superType != null) ": ${superType.typeName()}" else "" }${if (superType != null && coordinatesType != NullSpec) ", " else if (coordinatesType != NullSpec) ": " else ""}${if (coordinatesType != NullSpec) "Iterable<${coordinatesType.typeName()}>" else ""} {
 
             companion object {
                 val empty = $typeName()
@@ -207,7 +207,7 @@ class ContainerSpec(
         }
         val requiredCoordinates = if (isAccessThroughAttribute || parents.isEmpty()) p else listOf(parents[0]) + p
 
-        if (!parents.isEmpty()) {
+        if (parents.isNotEmpty()) {
             val accessName = if (parents.size > 1) parents[1].access else node.access
             val accessCode = if (accessName != "") {
                 if (isAccessThroughAttribute) {
